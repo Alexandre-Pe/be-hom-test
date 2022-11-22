@@ -1,0 +1,463 @@
+---
+title: "Introduction to Poisson processes with R"
+author: "5 ModIA"
+date: "2021/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+\section{1 - Homogeneous Poisson processes observed on a fixed window}
+
+First, we consider the case of a fixed observation window (and thus a random number of events). 
+
+Distribution conditionelle sachant le nb de point dans l'intervalle : $(T_1, ..., T_n) | \{N_t = n\} = (U_{(1)}, ... U_{(n)})$
+
+\subsection{1.1 - Simulation}
+
+```{r,eval=FALSE}
+simulPPh1 <- function(lambda,Tmax)
+{
+  Y <- rpois(1, lambda*Tmax)
+  U <- runif(Y, min = 0, max = Tmax)
+  return(sort(U))
+}
+```
+
+
+```{r,eval=FALSE}
+# simulate a homogeneous Poisson process:
+lambda <- 2
+Tmax <- 10
+PPh1 = simulPPh1(lambda, Tmax)
+
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPh1),seq(0,length(PPh1)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPh1, rep(0,length(PPh1)),type="p")
+
+# link the arrival times with the counts:
+lines(PPh1, seq(1,length(PPh1)),type="h",lty=2)
+```
+
+
+\subsection{1.2 - Maximum Likelihood Estimator (MLE)}
+
+$$
+\hat{\lambda_T} = \frac{N_T}{T}
+$$
+
+
+```{r,eval=FALSE}
+MLE1 <- function(PPh,Tmax)
+{
+  return(length(PPh)/Tmax)
+}
+```
+
+```{r,eval=FALSE}
+MLE_list <- c()
+for (i in 1:30) {
+  PPh1 = simulPPh1(lambda, Tmax)
+  MLE_list <- c(MLE_list, MLE1(PPh1, Tmax))
+}
+
+boxplot(MLE_list)
+```
+
+Comment:
+
+En moyenne, on retrouve bien des valeurs proches de lambda, mais celles-ci varient beaucoup.
+
+\subsection{1.3 - Asymptotic behavior of the MLE}
+
+\subsubsection{1.3.1 - LLN-type result}
+
+```{r,eval=FALSE}
+lambda = 2
+Tillustr = 1:500
+MLE_list <- c()
+
+for (Ti in Tillustr) {
+  PPh <- simulPPh1(lambda, Ti)
+  MLE_list <- c(MLE_list, MLE1(PPh, Ti))
+}
+
+
+plot(Tillustr,MLE_list,xlab="Tmax",ylab="MLE")
+abline(h = lambda, col = "red")
+```
+
+Comment: 
+
+On a bien convergence vers lambda.
+
+\subsubsection{1.3.2 - CLT-type result}
+
+```{r,eval=FALSE}
+K = 1000
+Z <- rep(0,K)
+lambda < 2
+Tmax <- 1
+
+for (k in 1:K) {
+  pph <- simulPPh1(lambda, Tmax)
+  mle <- MLE1(pph, Tmax)
+  Z[k] <- sqrt(Tmax) * (mle - lambda)
+}
+
+hist(Z,freq=FALSE,main=paste("Tmax",Tmax,sep="="))
+curve(dnorm(x,mean=0,sd=sqrt(lambda)), col="red",add=TRUE)
+
+plot(ecdf(Z),main=paste("Tmax",Tmax,sep="="))
+curve(pnorm(x,mean=0,sd=sqrt(lambda)),col="red",lwd=2,add=TRUE)
+```
+
+```{r,eval=FALSE}
+K = 1000
+Z <- rep(0,K)
+lambda <- 2
+Tmax <- 10
+
+for (k in 1:K) {
+  pph <- simulPPh1(lambda, Tmax)
+  mle <- MLE1(pph, Tmax)
+  Z[k] <- sqrt(Tmax) * (mle - lambda)
+}
+
+hist(Z,freq=FALSE,main=paste("Tmax",Tmax,sep="="))
+curve(dnorm(x,mean=0,sd=sqrt(lambda)), col="red",add=TRUE)
+
+plot(ecdf(Z),main=paste("Tmax",Tmax,sep="="))
+curve(pnorm(x,mean=0,sd=sqrt(lambda)), col="red",lwd=2,add=TRUE)
+```
+```{r,eval=FALSE}
+K = 1000
+Z <- rep(0,K)
+lambda <- 2
+Tmax <- 100
+
+for (k in 1:K) {
+  pph <- simulPPh1(lambda, Tmax)
+  mle <- MLE1(pph, Tmax)
+  Z[k] <- sqrt(Tmax) * (mle - lambda)
+}
+
+hist(Z,freq=FALSE,main=paste("Tmax",Tmax,sep="="))
+curve(dnorm(x,mean=0,sd=sqrt(lambda)), col="red",add=TRUE)
+
+plot(ecdf(Z),main=paste("Tmax",Tmax,sep="="))
+curve(pnorm(x,mean=0,sd=sqrt(lambda)),col="red",lwd=2,add=TRUE)
+```
+
+```{r,eval=FALSE}
+K = 1000
+Z <- rep(0,K)
+lambda <- 2
+Tmax <- 500
+
+for (k in 1:K) {
+  pph <- simulPPh1(lambda, Tmax)
+  mle <- MLE1(pph, Tmax)
+  Z[k] <- sqrt(Tmax) * (mle - lambda)
+}
+
+hist(Z,freq=FALSE,main=paste("Tmax",Tmax,sep="="))
+curve(dnorm(x,mean=0,sd=sqrt(lambda)), col="red",add=TRUE)
+
+plot(ecdf(Z),main=paste("Tmax",Tmax,sep="="))
+curve(pnorm(x,mean=0,sd=sqrt(lambda)),col="red",lwd=2,add=TRUE)
+```
+
+Comment: 
+
+On remarque que lorsque Tmax augmente l'histogramme approxime bien la distribution gaussienne.
+
+
+\subsection{1.4 - Statistical inference: hyptothesis testing}
+
+
+```{r,eval=FALSE}
+test1 <- function(PPh,Tmax,lambda0)
+{
+  lambdaT <- MLE1(PPh, Tmax)
+  A_obs <- sqrt(Tmax/lambda0) * (lambdaT - lambda0)
+  return(2 - 2*pnorm(abs(A_obs)))
+}
+```
+
+```{r}
+# Plot confidence intervals for the proportion of times alpha-level tests rejects the 
+# null hypothesis "lambda=lambda0" under each true distribution lambda in TrueLambda
+plot.level.power1 <- function(Tmax,lambda0,TrueLambda,alpha,nsimu)
+{
+  plot(range(TrueLambda),c(alpha,alpha),ylim=c(0,1),xlab="True lambda",ylab="Level/Power",
+       type="l",col="red",main=paste("lambda0 = ",lambda0,",  Tmax = ",Tmax,sep=""))
+  abline(1,0,lty=2,col="blue")
+  
+  for(lambda in TrueLambda)
+  {
+    # estimating the proportion under lambda in TrueLambda
+    propReject=0
+    for(sim in 1:nsimu){
+      propReject=propReject+(test1(simulPPh1(lambda,Tmax),Tmax,lambda0) <= alpha)/nsimu
+    }
+  # plot the confidence intervals
+  points(lambda,propReject)
+  points(lambda,propReject+sqrt(abs(propReject*(1-propReject))/nsimu)*qnorm(0.975),pch=2)
+  points(lambda,propReject-sqrt(abs(propReject*(1-propReject))/nsimu)*qnorm(0.975),pch=6)  
+  }
+}
+```
+
+```{r,eval=FALSE}
+alpha=0.05
+nsimu=1000
+lambda0=2
+TrueLambda= sort(c(2,seq(1,3, length.out = 10)))
+
+par(mfrow=c(1,2))
+for(Tmax in c(1,10,100,500))
+{
+  plot.level.power1(Tmax, lambda0, TrueLambda, alpha, nsimu)
+}
+```
+
+Comments:
+
+Plus ça monte vite vers 1 mieux c'est : on rejette plus facillement. (Pour T=1 ça marche pas bien). 
+
+Ici on affiche la puissance du test = proba de rejeter ...
+
+\section{2 - Homogeneous Poisson processes with fixed number of points}
+
+Second, we consider the case of a fixed number of points (and thus a random observation window). 
+
+\subsection{2.1 - Simulation}
+
+Loi des $W_i$ : exponentielle 
+
+```{r,eval=FALSE}
+simulPPh2 <- function(lambda,n)
+{
+  W <- rexp(n, rate = lambda) 
+  Ti <- cumsum(W)
+  return(Ti)
+}
+```
+
+```{r,eval=FALSE}
+n <- 20
+lambda <- 2
+PPh2 = simulPPh2(lambda = 2, n = 20)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPh2),seq(0,length(PPh2)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPh2, rep(0,length(PPh2)),type="p")
+
+# link the arrival times with the counts:
+lines(PPh2, seq(1,length(PPh2)),type="h",lty=2)
+```
+
+\subsection{2.2 - Maximum likelihood estimator}
+
+$$
+\hat{\lambda_n} = \frac{n}{T_n}
+$$
+
+```{r,eval=FALSE}
+MLE2 <- function(PPh)
+{
+  n <- length(PPh)
+  Tn <- PPh[n]
+  return(n/Tn)
+}
+
+MLE2(simulPPh2(lambda = 2, n = 20))
+MLE2(simulPPh2(lambda = 2, n = 20))
+MLE2(simulPPh2(lambda = 2, n = 20))
+MLE2(simulPPh2(lambda = 2, n = 20))
+MLE2(simulPPh2(lambda = 2, n = 20))
+MLE2(simulPPh2(lambda = 2, n = 20))
+```
+
+Comment:
+
+Proche de lambda = 2.
+
+\subsection{2.3 Asymptotic behavior of the MLE}
+
+\subsubsection{2.3.1 - LLN-type result}
+
+```{r,eval=FALSE}
+"COMPLETE"
+```
+
+Comment: 
+
+\subsubsection{2.3.2 - CLT-type result}
+
+```{r,eval=FALSE}
+"COMPLETE"
+```
+
+Comment:
+
+\subsection{2.4 - Statistical inference : confidence intervals}
+
+Asymptotique : 
+
+$$
+\left[ \frac{n}{T_n \left( 1 + \frac{z_{1-\alpha/2}}{\sqrt{n}} \right)} ; \frac{n}{T_n \left( 1 - \frac{z_{1-\alpha/2}}{\sqrt{n}} \right)} \right]
+$$
+
+Non-asymptotique : 
+
+$$
+\left [\frac{x_{2n,\alpha/2}}{2T_n} ; \frac{x_{2n, 1-\alpha/2}}{2T_n} \right]
+$$
+
+```{r,eval=FALSE}
+IC2 <- function(PPh,alpha=0.05,asymptotic)
+{
+  n <- length(PPh)
+  Tn <- PPh[n]
+  if(asymptotic)
+  {
+    z <- qnorm(1 - alpha/2)
+    inf <- n / (Tn * (1 + (z/sqrt(n))))
+    sup <- n / (Tn * (1 - (z/sqrt(n))))
+    return(c(inf, sup))
+  }
+  else
+  {
+    x1 <- qchisq(alpha/2, 2*n)
+    x2 <- qchisq(1 - alpha/2, 2*n)
+    return(c(x1/ (2*Tn), x2 / (2*Tn)))
+  }
+}
+```
+
+```{r,eval=FALSE}
+# Application on an example
+PPh2 <- simulPPh2(lambda=10,n=100)
+IC2(PPh2,alpha=0.05,asymptotic=TRUE)
+IC2(PPh2,alpha=0.05,asymptotic=FALSE)
+```
+
+Comment:
+
+Les intervalles de confiance asymptotique et non-asymptotique sont très proches.
+
+```{r,eval=FALSE}
+# Validation on simulated data
+lambda=2 ; nsimu=1000 ; n=10 # or n=100
+
+l1 <- 0
+l2 <- 0
+for (i in 1:nsimu){
+  PPh2 <- simulPPh2(lambda=lambda,n=n)
+  IC2a <- IC2(PPh2,alpha=0.05,asymptotic=TRUE)
+  if ((lambda > IC2a[1]) & (lambda < IC2a[2])) {l1 <- l1 + 1}
+  IC2b <- IC2(PPh2,alpha=0.05,asymptotic=FALSE)
+  if ((lambda > IC2b[1]) & (lambda < IC2b[2])) {l2 <- l2 + 1}
+}
+
+cat("L'intervale de confiance non-asymptotique est de niveau : ", l1/nsimu)
+cat("\nL'intervale de confiance asymptotique est de niveau : ", l2/nsimu)
+```
+
+```{r,eval=FALSE}
+# Validation on simulated data
+lambda=2 ; nsimu=1000 ; n=100
+
+l1 <- 0
+l2 <- 0
+for (i in 1:nsimu){
+  PPh2 <- simulPPh2(lambda=lambda,n=n)
+  IC2a <- IC2(PPh2,alpha=0.05,asymptotic=TRUE)
+  if ((lambda > IC2a[1]) & (lambda < IC2a[2])) {l1 <- l1 + 1}
+  
+  IC2b <- IC2(PPh2,alpha=0.05,asymptotic=FALSE)
+  if ((lambda > IC2b[1]) & (lambda < IC2b[2])) {l2 <- l2 + 1}
+}
+
+cat("L'intervale de confiance non-asymptotique est de niveau : ", l1/nsimu)
+cat("\nL'intervale de confiance asymptotique est de niveau : ", l2/nsimu)
+```
+
+Comment:
+
+On retrouve des niveaux plus proches de $1 - \alpha$ pour $n=100$. Dans les deux cas le niveau de l'intervale asymptotique est plus élevé que celui de l'intervale non-asymptotique.
+
+\section{3 - Inhomogeneous Poisson processes}
+
+Third, we simulate inhomogeneous Poisson processes with given intensity function on a fixed window. 
+
+
+
+```{r,eval=FALSE}
+simulPPi = function(lambda_fct,Tmax,M)
+{
+  Ti <- simulPPh1(M, Tmax)
+  n <- length(Ti)
+  U <- runif(n, min = 0, max = M)
+  ti <- c()
+  for (i in 1:n){
+    if (U[i] < lambda_fct(Ti[i])) {
+      ti <- c(ti, Ti[i])
+    }
+  }
+  return(sort(ti))
+}
+```
+
+```{r,eval=FALSE}
+Tmax=10
+lambda_fct1 <- function(t){
+  return(ifelse(t <= 7, 2, 
+                ifelse(t >8, 8, 0)))
+  }
+M1=10
+
+PPi1 = simulPPi(lambda_fct1, Tmax, M1)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPi1),seq(0,length(PPi1)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPi1, rep(0,length(PPi1)),type="p")
+
+# link the arrival times with the counts:
+lines(PPi1, seq(1,length(PPi1)),type="h",lty=2)
+```
+
+```{r,eval=FALSE}
+Tmax=10
+lambda_fct2 <- function(t){
+  return(2*t)
+  }
+M2= 21
+
+PPi2 = simulPPi(lambda_fct2, Tmax, M2)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPi2),seq(0,length(PPi2)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPi2, rep(0,length(PPi2)),type="p")
+
+# link the arrival times with the counts:
+lines(PPi2, seq(1,length(PPi2)),type="h",lty=2)
+```
+
+
+
+
