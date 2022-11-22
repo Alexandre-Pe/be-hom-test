@@ -1,0 +1,135 @@
+---
+title: "Test Weibull Z"
+author: "Joanne"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Weibull Test : in theory
+
+## Test 
+
+$$
+\mathcal{H}_0 : \lambda(.) \text{ constant} \quad \quad \mbox{contre} \quad \quad \mathcal{H}_1^+ : \lambda(.) \text{ increasing} \\
+\mathcal{H}_0 : \beta=1 \quad \quad \mbox{contre} \quad \quad \mathcal{H}_1^+ : \beta > 1
+$$
+
+with $\lambda(t) = \left( \frac{\beta}{\theta}\right) \left(\frac{t}{\theta} \right)^{\beta-1}$
+
+## The test statistic: Z
+
+$$
+Z = 2 \sum_{i=1}^n \log \left (\frac{T^\star}{T_i} \right )
+$$
+
+Reject $\mathcal{H}_0$ when : $\mathcal{R} = \{Z \leq q \}$.
+
+When Z take smaller values, it means that the ratios $(T^\star/T_i)_i$ are smaller. So the $(T_i)_i$ are higher and clothe to $T^\star$, which appends when $\lambda(.)$ is increasing. When $\lambda(.)$ is constant, the gap between the $(T_i)_i$ is stable, but when $\lambda(.)$ is increasing, the gap between the $(T_i)_i$ gets smaller and smaller.
+
+## The law
+
+According to the paper, we have : 
+
+$$
+\Lambda(T_k) / \Lambda(T^\star) = U_{(k)}
+$$
+where $(U_{(i)})_i$ order statistics generated from a random sample from $\mathcal{U}(0,1)$.
+
+$$
+\frac{\int_0^{T_k} \left( \frac{\beta}{\theta}\right) \left(\frac{t}{\theta} \right)^{\beta-1}dt}{\int_0^{T^\star} \left( \frac{\beta}{\theta}\right) \left(\frac{t}{\theta} \right)^{\beta-1}dt} = U_{(k)} \\
+\frac{(T_k/\theta)^\beta}{(T^\star/\theta)^\beta} = \left(\frac{T_k}{T^\star} \right)^\beta = U_{(k)}
+$$
+
+So $\frac{T_k}{T^\star}$ has the same distribution as $(U_{(k)})^{1/\beta}$.
+
+## 1 - Simulation
+
+Loi des $W_i$ : exponentielle 
+
+```{r,eval=FALSE}
+simulPPh2 <- function(lambda,n)
+{
+  W <- rexp(n, rate = lambda) 
+  Ti <- cumsum(W)
+  return(Ti)
+}
+```
+
+```{r,eval=FALSE}
+n <- 20
+lambda <- 2
+PPh2 = simulPPh2(lambda = 2, n = 20)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPh2),seq(0,length(PPh2)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPh2, rep(0,length(PPh2)),type="p")
+
+# link the arrival times with the counts:
+lines(PPh2, seq(1,length(PPh2)),type="h",lty=2)
+```
+
+# 3 - Inhomogeneous Poisson processes
+
+```{r,eval=FALSE}
+simulPPi = function(lambda_fct,Tmax,M)
+{
+  Ti <- simulPPh1(M, Tmax)
+  n <- length(Ti)
+  U <- runif(n, min = 0, max = M)
+  ti <- c()
+  for (i in 1:n){
+    if (U[i] < lambda_fct(Ti[i])) {
+      ti <- c(ti, Ti[i])
+    }
+  }
+  return(sort(ti))
+}
+```
+
+```{r,eval=FALSE}
+Tmax=10
+lambda_fct1 <- function(t){
+  return(ifelse(t <= 7, 2, 
+                ifelse(t >8, 8, 0)))
+  }
+M1=10
+
+PPi1 = simulPPi(lambda_fct1, Tmax, M1)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPi1),seq(0,length(PPi1)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPi1, rep(0,length(PPi1)),type="p")
+
+# link the arrival times with the counts:
+lines(PPi1, seq(1,length(PPi1)),type="h",lty=2)
+```
+
+```{r,eval=FALSE}
+Tmax=10
+lambda_fct2 <- function(t){
+  return(2*t)
+  }
+M2= 21
+
+PPi2 = simulPPi(lambda_fct2, Tmax, M2)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPi2),seq(0,length(PPi2)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPi2, rep(0,length(PPi2)),type="p")
+
+# link the arrival times with the counts:
+lines(PPi2, seq(1,length(PPi2)),type="h",lty=2)
+```
+
+
+
+
