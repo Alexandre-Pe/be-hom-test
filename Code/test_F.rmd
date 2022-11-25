@@ -1,0 +1,132 @@
+---
+title: "Étude du F-test (Snedecor's F-distribution)"
+author: "Alexandre Personnic"
+date: "November-December 2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# 1 - Theorical construction
+
+First, we define the test statistic we are foing to use. 
+
+Following the observations from Barlow et al (1972, p. 197), we decided to
+divide the failure times in two parts, the first $d$ and the last $n-d$, and to
+use the statistic $F=(n-d)T_d/(d(T_n-T_d))$ for the test.
+
+Taking $d=\left\lfloor\dfrac{n}{2}\right\rfloor$, if the intensity is
+increasing, $T_n - T_d$ should be smaller than for a constant intensity.
+Hence an increasing intensity should correspond to a larger value of this ratio.
+
+The random variable $T_d$ (resp. $T_n-T_d$) follows a Gamma distribution with parameters $n$
+and $\lambda$ (resp. $n-d$ and $\lambda$). As such, $F$ follows a Snedecor's F-distribution
+with $2d$ and $2(n-d)$ degrees of freedom.
+
+\subsection{1.1 - Simulation}
+
+```{r,eval=TRUE}
+simulPPh1 <- function(lambda, Tmax) {
+  Y <- rpois(1, lambda * Tmax)
+  U <- runif(Y, min = 0, max = Tmax)
+  return(sort(U))
+}
+```
+
+```{r,eval=TRUE}
+# simulate a homogeneous Poisson process:
+lambda <- 2
+Tmax <- 10
+PPh1 = simulPPh1(lambda, Tmax)
+
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPh1),seq(0,length(PPh1)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPh1, rep(0,length(PPh1)),type="p")
+
+# link the arrival times with the counts:
+lines(PPh1, seq(1,length(PPh1)),type="h",lty=2)
+```
+
+```{r, eval=TRUE}
+n = length(PPh1)
+d = floor(n/2)
+F = (n-d)*PPh1[d]/(d*PPh1[n] - PPh1[d])
+alpha = 1. - pf(F, 2*d, 2*(n-d))
+print(alpha)
+```
+
+\section{3 - Inhomogeneous Poisson processes}
+
+Third, we simulate inhomogeneous Poisson processes with given intensity function on a fixed window. 
+
+```{r,eval=FALSE}
+simulPPi = function(lambda_fct,Tmax,M) {
+  Ti <- simulPPh1(M, Tmax)
+  n <- length(Ti)
+  U <- runif(n, min = 0, max = M)
+  ti <- c()
+  for (i in 1:n){
+    if (U[i] < lambda_fct(Ti[i])) {
+      ti <- c(ti, Ti[i])
+    }
+  }
+  return(sort(ti))
+}
+```
+
+```{r,eval=FALSE}
+Tmax=10
+lambda_fct1 <- function(t){
+  return(ifelse(t <= 7, 2, 
+                ifelse(t > 8, 8, 0)))
+  }
+M1=10
+
+PPi1 = simulPPi(lambda_fct1, Tmax, M1)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPi1),seq(0,length(PPi1)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPi1, rep(0,length(PPi1)),type="p")
+
+# link the arrival times with the counts:
+lines(PPi1, seq(1,length(PPi1)),type="h",lty=2)
+```
+
+```{r, eval=TRUE}
+n = length(PPi1)
+d = floor(n/2)
+F = (n-d)*PPi1[d]/(d*PPi1[n] - PPi1[d])
+alpha = 1. - pf(F, 2*d, 2*(n-d))
+print(alpha)
+```
+
+```{r,eval=FALSE}
+Tmax=10
+lambda_fct2 <- function(t){
+  return(2*t)
+  }
+M2= 21
+
+PPi2 = simulPPi(lambda_fct2, Tmax, M2)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPi2),seq(0,length(PPi2)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPi2, rep(0,length(PPi2)),type="p")
+
+# link the arrival times with the counts:
+lines(PPi2, seq(1,length(PPi2)),type="h",lty=2)
+```
+
+
+
+
