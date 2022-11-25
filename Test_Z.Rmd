@@ -45,7 +45,19 @@ $$
 
 So $\frac{T_k}{T^\star}$ has the same distribution as $(U_{(k)})^{1/\beta}$.
 
+Under $\mathcal{H}_0$, $\frac{T_k}{T^\star}$
+
+
 ## 1 - Simulation
+
+```{r}
+simulPPh1 <- function(lambda,Tmax)
+{
+  Y <- rpois(1, lambda*Tmax)
+  U <- runif(Y, min = 0, max = Tmax)
+  return(sort(U))
+}
+```
 
 Loi des $W_i$ : exponentielle 
 
@@ -75,61 +87,125 @@ lines(PPh2, seq(1,length(PPh2)),type="h",lty=2)
 
 # 3 - Inhomogeneous Poisson processes
 
+We simulate $N \sim \mathcal{P}(\Lambda(t))$ (here we don't ?? we fix $N=10$)
+
+We simulate $S_1, ..., S_N$ i.i.d from density $s \mapsto \frac{\lambda(s)}{\Lambda(T^\star)} \mathbb{1}_{0 < s \leq T^\star}$.
+
+Then $(T_1, ..., T_N) = (S_{(1)}, ..., S_{(N)}$.
+
+We have $\Lambda = (T^\star / \theta)^\beta$.
+
 ```{r,eval=FALSE}
-simulPPi = function(lambda_fct,Tmax,M)
-{
-  Ti <- simulPPh1(M, Tmax)
-  n <- length(Ti)
-  U <- runif(n, min = 0, max = M)
-  ti <- c()
-  for (i in 1:n){
-    if (U[i] < lambda_fct(Ti[i])) {
-      ti <- c(ti, Ti[i])
-    }
-  }
-  return(sort(ti))
+lambda_weibull <- function(t, beta, theta){
+  return((beta/theta)*(t/theta)**(beta-1))
 }
+
+lambda_int <- function(Tstar, beta, theta){
+  return((Tstar / theta)**beta)
+}
+
+
+density_S <- function(s, lambda_fct, lambda_int, Tmax, beta, theta){
+  if (s <= Tmax) {
+    p <- lambda_fct(s, beta, theta)/lambda_int(Tmax, beta, theta)
+  } else {
+    p <- 0
+  }
+  return(p)
+}
+
+# ne marche pas !!!
+# simulHPP <- function(density_S, lambda_fct, N, Tstar, beta, theta){
+#   ti <- seq(0,Tstar, N)
+#   p <- density_S(ti, lambda_fct, lambda_int, Tmax, beta, theta)
+#   S <- c()
+#   for (i in 1:length(p)) {
+#     u <- runif(1, 0, 1)
+#     if (p[i] >= u){
+#       S <- c(S,ti[i])
+#     }
+#   }
+#   return(sort(S)[1:N])
+# }
+
+# simulHPP(density_S, lambda_weibull, 10, 5, 1, 1)
 ```
 
+Let's take $\theta = 1$.
+
 ```{r,eval=FALSE}
-Tmax=10
-lambda_fct1 <- function(t){
-  return(ifelse(t <= 7, 2, 
-                ifelse(t >8, 8, 0)))
-  }
-M1=10
+plot(seq(0,1,length.out = 10), lambda_weibull(seq(0,1,length.out = 10), 4, 1), 
+     main = "beta > 1 : lambda increasing")
 
-PPi1 = simulPPi(lambda_fct1, Tmax, M1)
+plot(seq(0,1,length.out = 10), lambda_weibull(seq(0,1,length.out = 10), 1, 1), 
+     main = "beta = 1 : lambda constant")
+```
 
-# plot the counting process (with jumps = 1): 
+
+**Problème :** C'est T ou N fixé ??? (Pour simulation de processus inhomogène c'est toujours T fixé ??)
+
+```{r,eval=FALSE}
+M1=2
+theta = 1
+beta= 1
+N = 10
+
+PPi1 = simulPPi(lambda_weibull, N, M1, beta, theta)
+
 plot(c(0,PPi1),seq(0,length(PPi1)),type="s",xlab="time t",ylab="number of events by time t")
-
-# add the arrival times: 
 points(PPi1, rep(0,length(PPi1)),type="p")
-
-# link the arrival times with the counts:
 lines(PPi1, seq(1,length(PPi1)),type="h",lty=2)
 ```
 
-```{r,eval=FALSE}
-Tmax=10
-lambda_fct2 <- function(t){
-  return(2*t)
-  }
-M2= 21
 
-PPi2 = simulPPi(lambda_fct2, Tmax, M2)
 
-# plot the counting process (with jumps = 1): 
-plot(c(0,PPi2),seq(0,length(PPi2)),type="s",xlab="time t",ylab="number of events by time t")
 
-# add the arrival times: 
-points(PPi2, rep(0,length(PPi2)),type="p")
+# Test 
 
-# link the arrival times with the counts:
-lines(PPi2, seq(1,length(PPi2)),type="h",lty=2)
+$\beta Z$ follows a chi-squared with $2n$ degrees of freedom.
+
+$$
+\mathcal{R} = \{Z \leq q \} \\
+\text{with  } Z = 2 \sum_{i=1}^n \log \left (\frac{T^\star}{T_i} \right ) \\
+\text{and } \beta Z \sim \mathcal{X}^2(2n)
+$$
+
+P-value computation :
+
+$$
+pvalue = \mathbb{P}(Z \leq Z^{obs}) = \Phi_{\mathcal{X^2}}(Z^{obs}) \\
+\text{where } \Phi \text{ cdf of a } \mathcal{X}^2(2n)
+$$
+
+Let's compute $Z^{obs}$ :
+
+```{r}
+alpha = 0.05
+
+# given a Tmax and vector Ti
+Zobs = 2*sum(log(Tmax/Ti))
+N = length(Ti)
+
+# pvalue : smaller value such that we reject H0
+pval = pchisq(Zobs, 2*N)
+cat("P-value : ", pval)
+
+# accept
+# if (pval < alpha) {
+#   cat("Accept H0")
+# } else {
+#   cat("Reject H0")
+# }
+
 ```
 
 
+```{r}
+# given a Tmax and vector Ti
+Zobs = 2*sum(log(Tmax/Ti))
+N = length(Ti)
 
-
+# pvalue 
+pval = pchisq(Zobs, 2*N)
+cat("P-value : ", pval)
+```
