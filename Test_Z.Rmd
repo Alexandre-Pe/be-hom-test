@@ -47,55 +47,17 @@ So $\frac{T_k}{T^\star}$ has the same distribution as $(U_{(k)})^{1/\beta}$.
 
 Under $\mathcal{H}_0$, $\frac{T_k}{T^\star}$
 
-
-## 1 - Simulation
-
-```{r}
-simulPPh1 <- function(lambda,Tmax)
-{
-  Y <- rpois(1, lambda*Tmax)
-  U <- runif(Y, min = 0, max = Tmax)
-  return(sort(U))
-}
-```
-
-Loi des $W_i$ : exponentielle 
-
-```{r,eval=FALSE}
-simulPPh2 <- function(lambda,n)
-{
-  W <- rexp(n, rate = lambda) 
-  Ti <- cumsum(W)
-  return(Ti)
-}
-```
-
-```{r,eval=FALSE}
-n <- 20
-lambda <- 2
-PPh2 = simulPPh2(lambda = 2, n = 20)
-
-# plot the counting process (with jumps = 1): 
-plot(c(0,PPh2),seq(0,length(PPh2)),type="s",xlab="time t",ylab="number of events by time t")
-
-# add the arrival times: 
-points(PPh2, rep(0,length(PPh2)),type="p")
-
-# link the arrival times with the counts:
-lines(PPh2, seq(1,length(PPh2)),type="h",lty=2)
-```
-
 # 3 - Inhomogeneous Poisson processes
 
-We simulate $N \sim \mathcal{P}(\Lambda(t))$ (here we don't ?? we fix $N=10$)
+We simulate $N \sim \mathcal{P}(\Lambda(t))$.
 
-We simulate $S_1, ..., S_N$ i.i.d from density $s \mapsto \frac{\lambda(s)}{\Lambda(T^\star)} \mathbb{1}_{0 < s \leq T^\star}$.
+We simulate $S_1, ..., S_N$ i.i.d from density $s \mapsto \frac{\lambda(s)}{\Lambda(T^\star)} \mathbb{1}_{0 < s \leq T^\star}$. To do so, we apply the inverse distribution function or quantile function ($F^{-1}$) to a uniform sample. 
 
-Then $(T_1, ..., T_N) = (S_{(1)}, ..., S_{(N)}$.
+Then $(T_1, ..., T_N) = (S_{(1)}, ..., S_{(N)})$.
 
 We have $\Lambda = (T^\star / \theta)^\beta$.
 
-```{r,eval=FALSE}
+```{r}
 lambda_weibull <- function(t, beta, theta){
   return((beta/theta)*(t/theta)**(beta-1))
 }
@@ -103,7 +65,6 @@ lambda_weibull <- function(t, beta, theta){
 lambda_int <- function(Tstar, beta, theta){
   return((Tstar / theta)**beta)
 }
-
 
 density_S <- function(s, lambda_fct, lambda_int, Tmax, beta, theta){
   if (s <= Tmax) {
@@ -114,50 +75,61 @@ density_S <- function(s, lambda_fct, lambda_int, Tmax, beta, theta){
   return(p)
 }
 
-# ne marche pas !!!
-# simulHPP <- function(density_S, lambda_fct, N, Tstar, beta, theta){
-#   ti <- seq(0,Tstar, N)
-#   p <- density_S(ti, lambda_fct, lambda_int, Tmax, beta, theta)
-#   S <- c()
-#   for (i in 1:length(p)) {
-#     u <- runif(1, 0, 1)
-#     if (p[i] >= u){
-#       S <- c(S,ti[i])
-#     }
-#   }
-#   return(sort(S)[1:N])
-# }
+quantile_function <- function(p, Tstar, beta){
+  return(Tstar * p**(1/beta))
+}
 
-# simulHPP(density_S, lambda_weibull, 10, 5, 1, 1)
+
+simulHPP <- function(Tstar, beta, theta){
+  # simulate the number of event under a Poisson distribution
+  N <- rpois(1, lambda_int(Tstar, beta, theta))
+  # simulate a uniform sample
+  U <- runif(N,0,1)
+  # apply the quantile function (inverse of the cumulative distribution function)
+  S <- quantile_function(U, Tstar, beta)
+  # sort the sample
+  return(sort(S)[1:N])
+}
 ```
 
 Let's take $\theta = 1$.
 
-```{r,eval=FALSE}
-plot(seq(0,1,length.out = 10), lambda_weibull(seq(0,1,length.out = 10), 4, 1), 
+```{r}
+Tstar <- 1
+
+plot(seq(0,Tstar,length.out = 10), lambda_weibull(seq(0,Tstar,length.out = 10), 5, 1), 
      main = "beta > 1 : lambda increasing")
 
-plot(seq(0,1,length.out = 10), lambda_weibull(seq(0,1,length.out = 10), 1, 1), 
+plot(seq(0,Tstar,length.out = 10), lambda_weibull(seq(0,Tstar,length.out = 10), 1, 1), 
      main = "beta = 1 : lambda constant")
 ```
 
 
-**Problème :** C'est T ou N fixé ??? (Pour simulation de processus inhomogène c'est toujours T fixé ??)
+```{r}
+theta <- 1
+beta <- 4 # (over 1 = increasing)
+Tstar <- 2
 
-```{r,eval=FALSE}
-M1=2
-theta = 1
-beta= 1
-N = 10
-
-PPi1 = simulPPi(lambda_weibull, N, M1, beta, theta)
+PPi1 <- simulHPP(Tstar, beta, theta)
 
 plot(c(0,PPi1),seq(0,length(PPi1)),type="s",xlab="time t",ylab="number of events by time t")
 points(PPi1, rep(0,length(PPi1)),type="p")
 lines(PPi1, seq(1,length(PPi1)),type="h",lty=2)
+
+
+theta <- 1
+beta <- 1 # (constant)
+Tstar <- 2
+N <- 0
+while (N == 0) {
+  PPi2 <- simulHPP(Tstar, beta, theta)
+  N <- length(PPi2)
+}
+
+plot(c(0,PPi2),seq(0,length(PPi2)),type="s",xlab="time t",ylab="number of events by time t")
+points(PPi2, rep(0,length(PPi2)),type="p")
+lines(PPi2, seq(1,length(PPi2)),type="h",lty=2)
 ```
-
-
 
 
 # Test 
@@ -177,35 +149,81 @@ pvalue = \mathbb{P}(Z \leq Z^{obs}) = \Phi_{\mathcal{X^2}}(Z^{obs}) \\
 \text{where } \Phi \text{ cdf of a } \mathcal{X}^2(2n)
 $$
 
-Let's compute $Z^{obs}$ :
+Let's compute $Z^{obs}$ and the p-value :
 
 ```{r}
-alpha = 0.05
+get_pval <- function(PPi, Tstar){
+  Zobs = 2*sum(log(Tstar/PPi))
+  N = length(PPi)
+  # pvalue : smaller value such that we reject H0
+  pval = pchisq(Zobs, 2*N)
+  return(pval)
+}
 
-# given a Tmax and vector Ti
-Zobs = 2*sum(log(Tmax/Ti))
-N = length(Ti)
+alpha <- 0.05
 
-# pvalue : smaller value such that we reject H0
-pval = pchisq(Zobs, 2*N)
-cat("P-value : ", pval)
+# With PPi1
+pval <- get_pval(PPi1, Tstar)
+cat("P-value : ", pval, "\n")
 
 # accept
-# if (pval < alpha) {
-#   cat("Accept H0")
-# } else {
-#   cat("Reject H0")
-# }
+if (pval < alpha) {
+  cat("Reject H0 : lambda is inscreasing\n")
+} else {
+  cat("Accept H0 : lambda is constant\n")
+}
 
+# With PPi2
+pval <- get_pval(PPi2, Tstar)
+cat("P-value : ", pval, "\n")
+
+# accept
+if (pval < alpha) {
+  cat("Reject H0 : lambda is inscreasing\n")
+} else {
+  cat("Accept H0 : lambda is constant\n")
+}
+
+```
+
+## Size $\alpha$
+
+To check if the test's size is indead $\alpha = 0.05$, we will run it $x$ times, and count the number of time it gets the right answer.
+
+
+```{r}
+get_size <- function(K, alpha, get_pval, simulHPP, Tstar, beta, theta){
+  nb.rejects <- 0
+  for(k in 1:K){
+    N <- 0
+    while(N <= 1){
+      PPi <- simulHPP(Tstar, beta, theta)
+      N <- length(PPi)
+    }
+    pval = get_pval(PPi, Tstar)
+    nb.rejects = nb.rejects + (pval<=alpha)  
+  }
+  return(nb.rejects/K)
+}
 ```
 
 
 ```{r}
-# given a Tmax and vector Ti
-Zobs = 2*sum(log(Tmax/Ti))
-N = length(Ti)
+# question : on compte le nombre de fois qu'il dit H1 alors que c'est H0
+# mais ducoup on ne le test que avec des lambda constant ?
 
-# pvalue 
-pval = pchisq(Zobs, 2*N)
-cat("P-value : ", pval)
+alpha <- 0.05
+beta <- 1
+theta <- 1
+Tstar <- 2
+test_size <- get_size(K = 1000, alpha, get_pval, simulHPP, Tstar, beta, theta)
+cat("\nSize of the test : ", test_size)
+
 ```
+
+## How to compute the power of the test
+
+
+
+
+
