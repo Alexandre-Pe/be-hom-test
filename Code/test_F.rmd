@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-# 1 - Theorical construction
+## Theorical construction of the F-Test
 
 First, we define the test statistic we are foing to use. 
 
@@ -26,7 +26,9 @@ The random variable $T_d$ (resp. $T_n-T_d$) follows a Gamma distribution with pa
 and $\lambda$ (resp. $n-d$ and $\lambda$). As such, $F$ follows a Snedecor's F-distribution
 with $2d$ and $2(n-d)$ degrees of freedom.
 
-\subsection{1.1 - Simulation}
+### Simulation with homogeneous poisson processs
+
+We simulate homogeneous Poisson processes with given intensity $\lambda$. 
 
 ```{r,eval=TRUE}
 simulPPh1 <- function(lambda, Tmax) {
@@ -39,7 +41,7 @@ simulPPh1 <- function(lambda, Tmax) {
 ```{r,eval=TRUE}
 # simulate a homogeneous Poisson process:
 lambda <- 2
-Tmax <- 10
+Tmax <- 20
 PPh1 = simulPPh1(lambda, Tmax)
 
 
@@ -56,17 +58,52 @@ lines(PPh1, seq(1,length(PPh1)),type="h",lty=2)
 ```{r, eval=TRUE}
 n = length(PPh1)
 d = floor(n/2)
-F = (n-d)*PPh1[d]/(d*PPh1[n] - PPh1[d])
+F = (n-d)*PPh1[d]/(d*(PPh1[n] - PPh1[d]))
 alpha = 1. - pf(F, 2*d, 2*(n-d))
 print(alpha)
 ```
 
-\section{3 - Inhomogeneous Poisson processes}
+### Simulation with in-homogeneous poisson processs
 
-Third, we simulate inhomogeneous Poisson processes with given intensity function on a fixed window. 
+We simulate inhomogeneous Poisson processes with given intensity function on a fixed window and 
+with an affine intensity function. 
 
-```{r,eval=FALSE}
-simulPPi = function(lambda_fct,Tmax,M) {
+```{r, eval=TRUE}
+# lambda increasing by level 1 -> 4 -> 8
+lambda_fct1 <- function(t) {
+  return(ifelse(t <= 5, 1, 
+                ifelse(t <= 10, 4, 8)))
+}
+# Tmax=20
+# s <- seq(from=0, to=Tmax, length.out=100)
+# ti <- c()
+# for (i in s) {
+#   ti <- c(ti, lambda_fct1(i))
+# }
+# plot(s, ti)
+```
+
+```{r,eval=TRUE}
+# return lambda affine function of t with origin and coefficient
+lambda_affine <- function(origin=1, coef=0) {
+  lambda_lin <- function(t) {
+    return(origin+t*coef)
+  }
+  return(lambda_lin)
+}
+# lambda_lin = lambda_affine(1, 1/5)
+# ti <- c()
+# for (i in s) {
+#   ti <- c(ti, lambda_lin(i))
+# }
+# plot(s, ti)
+```
+
+```{r,eval=TRUE}
+# Processus to simulate an inhomogeneous poisson process
+# with a given lambda function and y
+simulPPi = function(lambda_fct,Tmax) {
+  M = 1.2 * lambda_fct(Tmax)
   Ti <- simulPPh1(M, Tmax)
   n <- length(Ti)
   U <- runif(n, min = 0, max = M)
@@ -80,15 +117,27 @@ simulPPi = function(lambda_fct,Tmax,M) {
 }
 ```
 
-```{r,eval=FALSE}
-Tmax=10
-lambda_fct1 <- function(t){
-  return(ifelse(t <= 7, 2, 
-                ifelse(t > 8, 8, 0)))
-  }
-M1=10
+```{r, eval=TRUE}
+# How does it works ???
+simulPPi_jo <- function(lambda_fct, Tstar){
+  # simulate the number of event under a Poisson distribution
+  N <- rpois(1, lambda_fct(Tstar))
+  # simulate a uniform sample
+  U <- runif(N,0,1)
+  # apply the quantile function (inverse of the cumulative distribution function)
+  S <- qf(U, Tstar)
+  # sort the sample
+  return(sort(S)[1:N])
+}
+```
 
-PPi1 = simulPPi(lambda_fct1, Tmax, M1)
+
+```{r,eval=FALSE}
+Tmax=20
+origin = 1
+coef = 1/10
+
+PPi1 = simulPPi(lambda_affine(origin, coef), Tmax)
 
 # plot the counting process (with jumps = 1): 
 plot(c(0,PPi1),seq(0,length(PPi1)),type="s",xlab="time t",ylab="number of events by time t")
@@ -103,19 +152,16 @@ lines(PPi1, seq(1,length(PPi1)),type="h",lty=2)
 ```{r, eval=TRUE}
 n = length(PPi1)
 d = floor(n/2)
-F = (n-d)*PPi1[d]/(d*PPi1[n] - PPi1[d])
+F = (n-d)*PPi1[d]/(d*(PPi1[n] - PPi1[d]))
 alpha = 1. - pf(F, 2*d, 2*(n-d))
 print(alpha)
 ```
 
 ```{r,eval=FALSE}
-Tmax=10
-lambda_fct2 <- function(t){
-  return(2*t)
-  }
-M2= 21
+origin = 0
+coef = 2
 
-PPi2 = simulPPi(lambda_fct2, Tmax, M2)
+PPi2 = simulPPi(lambda_affine(origin, coef), Tmax)
 
 # plot the counting process (with jumps = 1): 
 plot(c(0,PPi2),seq(0,length(PPi2)),type="s",xlab="time t",ylab="number of events by time t")
@@ -127,6 +173,13 @@ points(PPi2, rep(0,length(PPi2)),type="p")
 lines(PPi2, seq(1,length(PPi2)),type="h",lty=2)
 ```
 
+```{r, eval=TRUE}
+n = length(PPi2)
+d = floor(n/2)
+F = (n-d)*PPi2[d]/(d*(PPi2[n] - PPi2[d]))
+alpha = 1. - pf(F, 2*d, 2*(n-d))
+print(alpha)
+```
 
 
 
