@@ -104,11 +104,14 @@ lambda_fct1 <- function(t) {
 
 ```{r,eval=TRUE}
 # return lambda affine function of t with origin and coefficient
-lambda_affine <- function(origin=1, coef=0) {
-  lambda_lin <- function(t) {
+lambda_affine <- function(origin=0, coef=1) {
+  if(coef == 0) {
+    stop("coef must not be 0.")
+  }
+  temp_fun <- function(t) {
     return(origin+t*coef)
   }
-  return(lambda_lin)
+  return(temp_fun)
 }
 # lambda_lin = lambda_affine(1, 1/5)
 # ti <- c()
@@ -116,6 +119,18 @@ lambda_affine <- function(origin=1, coef=0) {
 #   ti <- c(ti, lambda_lin(i))
 # }
 # plot(s, ti)
+```
+
+```{r, eval=True}
+invert_LAMBDA_affine <- function(origin=0, coef=1) {
+  if(coef == 0) {
+    stop("coef must not be 0.")
+  }
+  temp_fun <- function(K) {
+    return((origin+sqrt(origin**2+coef*K))/coef)
+  }
+  return(temp_fun)
+}
 ```
 
 ```{r,eval=TRUE}
@@ -137,14 +152,14 @@ simulPPi = function(lambda_fct,Tmax) {
 ```
 
 ```{r, eval=TRUE}
-# How does it works ???
-simulPPi_jo <- function(lambda_fct, Tstar){
+simulPPi_jo <- function(lambda_fct, Tstar, invert_lambda_fct) {
+  L_Tstar = lambda_fct(Tstar)
   # simulate the number of event under a Poisson distribution
-  N <- rpois(1, lambda_fct(Tstar))
+  N <- rpois(1, L_Tstar)
   # simulate a uniform sample
   U <- runif(N,0,1)
-  # apply the quantile function (inverse of the cumulative distribution function)
-  S <- qf(U, Tstar)
+  # apply the invert of the lambda function to get 
+  S <- invert_lambda_fct(L_Tstar*U)
   # sort the sample
   return(sort(S)[1:N])
 }
