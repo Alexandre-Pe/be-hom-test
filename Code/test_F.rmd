@@ -63,6 +63,25 @@ alpha = 1. - pf(F, 2*d, 2*(n-d))
 print(alpha)
 ```
 
+```{r,eval=TRUE}
+nb_miss = 0
+alpha = 0.05
+lambda = 2
+nb_simul = 100000
+Tmax = 20
+for (i in 1:nb_simul) {
+  PPh1 = simulPPh1(lambda, Tmax)
+  n = length(PPh1)
+  d = floor(n/2)
+  F = (n-d)*PPh1[d]/(d*(PPh1[n] - PPh1[d]))
+  p_val = 1. - pf(F, 2*d, 2*(n-d))
+  if (p_val < alpha) {
+    nb_miss = nb_miss + 1
+  }
+}
+print(nb_miss/nb_simul)
+```
+
 ### Simulation with in-homogeneous poisson processs
 
 We simulate inhomogeneous Poisson processes with given intensity function on a fixed window and 
@@ -155,6 +174,26 @@ d = floor(n/2)
 F = (n-d)*PPi1[d]/(d*(PPi1[n] - PPi1[d]))
 alpha = 1. - pf(F, 2*d, 2*(n-d))
 print(alpha)
+```
+
+```{r,eval=TRUE}
+nb_correct = 0
+alpha = 0.05
+nb_simul = 10000
+origin = 1
+coef = 1
+Tmax = 20
+for (i in 1:nb_simul) {
+  PPi1 = simulPPi(lambda_affine(origin, coef), Tmax)
+  n = length(PPi1)
+  d = floor(n/2)
+  F = (n-d)*PPi1[d]/(d*(PPi1[n] - PPi1[d]))
+  p_val = 1. - pf(F, 2*d, 2*(n-d))
+  if (p_val < alpha) {
+    nb_correct = nb_correct + 1
+  }
+}
+print(nb_correct)
 ```
 
 ```{r,eval=FALSE}
