@@ -1,0 +1,110 @@
+---
+title: "Laplace's test"
+author: "Huimin ZHANG"
+date: "2022/2023"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Laplace's test
+
+First, let's define the test statistic. 
+
+Test statistic : $L = \sum_{i=1}^n \frac{T_i}{T^*}$ where $T*$ is a fixed units of time
+
+The interarrival times $W_i$ have an exponential distribution with parameter $\lambda$ and $\mathbb{E}[\mathcal{E(\lambda)}] = \frac{1}{\lambda}$
+
+ 
+
+# Simulation 
+
+```{r}
+lambda_fct <- function(alpha, beta ,t){
+  if (beta == 0) {lamb = alpha}
+  else {lamb = alpha*exp(beta*t)}
+  return(lamb)
+}
+```
+
+```{r}
+L <- function(Ti){
+  return(mean(Ti))
+}
+```
+
+
+## Homogenous Poisson Process
+
+```{r,eval=FALSE}
+# T fixed
+simulPPh1 <- function(lambda,Tmax)
+{
+  Y <- rpois(1, lambda*Tmax)
+  U <- runif(Y, min = 0, max = Tmax)
+  return(sort(U))
+}
+```
+
+```{r,eval=FALSE}
+# n fixed
+simulPPh2 <- function(lambda,n)
+{
+  W <- rexp(n, rate = lambda) 
+  Ti <- cumsum(W)
+  return(Ti)
+}
+```
+
+
+```{r}
+t = seq(0,5)
+lambda <- lambda_fct(alpha, beta, t)
+PPh = simulPPh2(lambda, n) # pas bon il faut prendre une simu non homogène 
+```
+
+
+```{r,eval=FALSE}
+# simulate a homogeneous Poisson process with n fixed
+Tmax <- 10
+n <- 30
+alpha <- 2
+beta <- 0
+lambda <- lambda_fct(alpha, beta, 1)
+PPh1 = simulPPh1(lambda, Tmax)
+PPh2 = simulPPh2(lambda, n)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPh1),seq(0,length(PPh1)),type="s",xlab="time t",ylab="number of events by time t")
+# add the arrival times: 
+points(PPh1, rep(0,length(PPh1)),type="p")
+# link the arrival times with the counts:
+lines(PPh1, seq(1,length(PPh1)),type="h",lty=2)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPh2),seq(0,length(PPh2)),type="s",xlab="time t",ylab="number of events by time t")
+# add the arrival times: 
+points(PPh2, rep(0,length(PPh2)),type="p")
+# link the arrival times with the counts:
+lines(PPh2, seq(1,length(PPh2)),type="h",lty=2)
+```
+
+```{r,eval=FALSE}
+test1 <- function(PPh,n)
+{
+  L_obs <- mean(PPh)
+  Z_obs <- (L_obs - n/2)/sqrt(n/12)
+  return(1 - pnorm(Z_obs))
+}
+
+print(test1(PPh1, length(PPh1)))
+print(test1(PPh2, length(PPh2)))
+```
+
+## Inhomogeneous Poisson process
+
+
+
+
