@@ -38,6 +38,7 @@ simulPPh1 <- function(lambda, Tmax) {
 }
 ```
 
+We try our test on one simulated sample.
 ```{r,eval=TRUE}
 # simulate a homogeneous Poisson process:
 lambda <- 2
@@ -63,11 +64,14 @@ alpha = 1. - pf(F, 2*d, 2*(n-d))
 print(alpha)
 ```
 
+We have a $pvalue >> 0.05$ so the hypothesis H0 is kept. The test is correct.
+
+We do a Monte-Carlo estimation of our test size with 10,000 repetitions.
 ```{r,eval=TRUE}
 nb_miss = 0
 alpha = 0.05
 lambda = 2
-nb_simul = 100000
+nb_simul = 10000
 Tmax = 20
 for (i in 1:nb_simul) {
   PPh1 = simulPPh1(lambda, Tmax)
@@ -82,25 +86,33 @@ for (i in 1:nb_simul) {
 print(nb_miss/nb_simul)
 ```
 
+We indeed have a size $alpha = 0.05$.
+
 ### Simulation with in-homogeneous poisson processs
 
 We simulate inhomogeneous Poisson processes with given intensity function on a fixed window and 
 with an affine intensity function. 
 
+
 ```{r, eval=TRUE}
-# lambda increasing by level 1 -> 4 -> 8
-lambda_fct1 <- function(t) {
-  return(ifelse(t <= 5, 1, 
-                ifelse(t <= 10, 4, 8)))
+# lambda increasing by level 
+lambda_palier <- function(tau=0.5, a=1, b=2) {
+  # a function returning a if t <= tau and b otherwise.
+  lambda <- function(t) {
+    return(ifelse(t <= tau, a, b))
+  }
+  # return a function returning the primitive of the precedent one.
+  LAMBDA <- function(t) {
+    return(ifelse(t <= tau, a*t, a*tau+b*(t-tau)))
+  }
+  # return a function returning the inverse of the precedent one.
+  invert_LAMBDA <- function(k) {
+    return(ifelse(k<=tau*a, k/a, (k-a*tau)/b + tau))
+  }
+  return(lambda, LAMBDA, invert_LAMBDA)
 }
-# Tmax=20
-# s <- seq(from=0, to=Tmax, length.out=100)
-# ti <- c()
-# for (i in s) {
-#   ti <- c(ti, lambda_fct1(i))
-# }
-# plot(s, ti)
 ```
+
 
 ```{r,eval=TRUE}
 # return lambda affine function of t with origin and coefficient
@@ -113,30 +125,25 @@ lambda_affine <- function(origin=0, coef=1) {
   }
   return(temp_fun)
 }
-# lambda_lin = lambda_affine(1, 1/5)
-# ti <- c()
-# for (i in s) {
-#   ti <- c(ti, lambda_lin(i))
-# }
-# plot(s, ti)
 ```
 
 ```{r, eval=True}
-invert_LAMBDA_affine <- function(origin=0, coef=1) {
-  if(coef == 0) {
-    stop("coef must not be 0.")
-  }
-  temp_fun <- function(K) {
-    return((origin+sqrt(origin**2+coef*K))/coef)
-  }
-  return(temp_fun)
-}
+# Ne fonctionne pas
+# invert_LAMBDA_affine <- function(origin=0, coef=1) {
+#   if(coef == 0) {
+#     stop("coef must not be 0.")
+#   }
+#   temp_fun <- function(K) {
+#     return((origin+sqrt(origin**2+coef*K))/coef)
+#   }
+#   return(temp_fun)
+# }
 ```
 
 ```{r,eval=TRUE}
-# Processus to simulate an inhomogeneous poisson process
-# with a given lambda function and y
 simulPPi = function(lambda_fct,Tmax) {
+  # Processus to simulate an inhomogeneous poisson process
+  # with a given lambda function and Tmax using thinning process.
   M = 1.2 * lambda_fct(Tmax)
   Ti <- simulPPh1(M, Tmax)
   n <- length(Ti)
@@ -152,26 +159,53 @@ simulPPi = function(lambda_fct,Tmax) {
 ```
 
 ```{r, eval=TRUE}
-simulPPi_jo <- function(lambda_fct, Tstar, invert_lambda_fct) {
-  L_Tstar = lambda_fct(Tstar)
+simulPPi_jo <- function(LAMBDA_fct, Tstar, invert_LAMBDA_fct) {
+  # Processus to simulate an inhomogeneous poisson process
+  # with a given lambda function and Tmax using Joanne process.
+  L_Tstar = LAMBDA_fct(Tstar)
   # simulate the number of event under a Poisson distribution
   N <- rpois(1, L_Tstar)
   # simulate a uniform sample
   U <- runif(N,0,1)
   # apply the invert of the lambda function to get 
-  S <- invert_lambda_fct(L_Tstar*U)
+  S <- invert_LAMBDA_fct(L_Tstar*U)
   # sort the sample
   return(sort(S)[1:N])
 }
 ```
 
-
+Test with thinning method for data generation.
 ```{r,eval=FALSE}
 Tmax=20
 origin = 1
 coef = 1/10
 
 PPi1 = simulPPi(lambda_affine(origin, coef), Tmax)
+
+# plot the counting process (with jumps = 1): 
+plot(c(0,PPi1),seq(0,length(PPi1)),type="s",xlab="time t",ylab="number of events by time t")
+
+# add the arrival times: 
+points(PPi1, rep(0,length(PPi1)),type="p")
+
+# link the arrival times with the counts:
+lines(PPi1, seq(1,length(PPi1)),type="h",lty=2)
+```
+
+```{r, eval=TRUE}
+n = length(PPi1)
+d = floor(n/2)
+F = (n-d)*PPi1[d]/(d*(PPi1[n] - PPi1[d]))
+alpha = 1. - pf(F, 2*d, 2*(n-d))
+print(alpha)
+```
+
+Test with paper method for data generation
+```{r,eval=FALSE}
+Tmax=20
+tau = 2/3
+
+PPi1 = simulPPi_jo(LAMBDA_palier(tau*Tmax), Tmax, invert_LAMBDA_palier(tau*Tmax))
 
 # plot the counting process (with jumps = 1): 
 plot(c(0,PPi1),seq(0,length(PPi1)),type="s",xlab="time t",ylab="number of events by time t")
