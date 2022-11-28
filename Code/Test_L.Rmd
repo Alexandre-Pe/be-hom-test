@@ -23,42 +23,9 @@ So, we reject $\mathcal{H}_0$ when $L$ have big values, i.e. the rejection zone 
 # Simulation 
 
 ```{r}
-lambda_exp <- function(alpha, beta, Tstar) {
-  lambda <- function(alpha, beta, t){
-    return(alpha*exp(beta*t))
-  }
-  
-  LAMBDA <- function(alpha, beta, t){
-    return((alpha/beta)*(exp(beta*t) - 1))
-  }
-  
-  quantile_function <- function(U, Tstar, beta){
-    return((1/beta) * log(U*(exp(beta*Tstar) - 1) + 1))
-  }
-  
-  return(c(lambda, LAMBDA, quantile_function))
+lambda_fct <- function(alpha, beta, t){
+  return(alpha*exp(beta*t))
 }
-```
-
-
-```{r}
-plot_PP <-function(PP){
-  # plot the counting process (with jumps = 1): 
-  plot(c(0,PP),seq(0,length(PP)),type="s",xlab="time t",ylab="number of events by time t")
-  # add the arrival times: 
-  points(PP, rep(0,length(PP)),type="p")
-  # link the arrival times with the counts:
-  lines(PP, seq(1,length(PP)),type="h",lty=2)
-}
-```
-
-
-
-```{r}
-expo <- lambda_exp(alpha = 2, beta = 0, Tstar = 5)
-lambda <- expo[[1]]
-LAMBDA <- expo[[2]]
-quantile_function <- expo[[3]]
 ```
 
 ```{r}
@@ -70,11 +37,10 @@ L <- function(Ti, T_star){
 
 ## Homogenous Poisson Process
 
-```{r}
+```{r,eval=FALSE}
 # T fixed
-simulPPh <- function(alpha, beta, T_star)
+simulPPh <- function(lambda, T_star)
 {
-  lambda <- lambda_fct(alpha, beta, 1)
   Y <- rpois(1, lambda*T_star)
   U <- runif(Y, min = 0, max = T_star)
   return(sort(U))
@@ -82,7 +48,7 @@ simulPPh <- function(alpha, beta, T_star)
 ```
 
 
-```{r}
+```{r,eval=FALSE}
 # simulate a homogeneous Poisson process with T fixed
 T_star <- 10
 alpha <- 2
@@ -98,7 +64,7 @@ points(PPh, rep(0,length(PPh)),type="p")
 lines(PPh, seq(1,length(PPh)),type="h",lty=2)
 ```
 
-```{r}
+```{r,eval=FALSE}
 test1 <- function(PPh, T_star)
 {
   n <- length(PPh)
@@ -110,43 +76,15 @@ test1 <- function(PPh, T_star)
 print(test1(PPh, T_star))
 ```
 
-```{r}
-get_size <- function(K, alpha, get_pval, simulHPP, Tstar, alpha_lamb, beta){
-  nb.rejects <- 0
-  lambda <- lambda_fct(alpha_lamb, beta, 1)
-  for(k in 1:K){
-    N <- 0
-    while(N <= 1){
-      PPi <- simulHPP(lambda, Tstar)
-      N <- length(PPi)
-    }
-    pval = get_pval(PPi, Tstar)
-    nb.rejects = nb.rejects + (pval<=alpha)  
-  }
-  return(nb.rejects/K)
-}
-```
-
-```{r}
-alpha <- 0.05
-Tstar <- 5
-alpha_lamb <- 2
-beta <- 0
-test_size <- get_size(K = 1000, alpha, test1, simulPPh, Tstar, alpha_lamb, beta)
-cat("\nSize of the test : ", test_size)
-```
-
-
-
 ## Inhomogeneous Poisson process
 
 ```{r}
 lambda_int <- function(alpha, beta, t){
-  return((alpha/beta)*(exp(beta*t) - 1))
+  return((alpha/beta)*exp(beta*t) - alpha/beta)
 }
 
 quantile_function <- function(U, Tstar, beta){
-  return((1/beta) * log(U*(exp(beta*Tstar) - 1) + 1))
+  return((1/beta) * log(U*(exp(beta*Tstar - 1)) + 1))
 }
 
 simulPPi <- function(Tstar, alpha, beta){
@@ -162,7 +100,7 @@ simulPPi <- function(Tstar, alpha, beta){
 ```
 
 
-```{r}
+```{r,eval=FALSE}
 # simulate an inhomogeneous Poisson process with T fixed
 T_star <- 3
 alpha <- 1
@@ -179,33 +117,4 @@ lines(PPi, seq(1,length(PPi)),type="h",lty=2)
 ```{r}
 print(test1(PPi, T_star))
 ```
-
-```{r}
-get_size <- function(K, alpha, get_pval, simulPPi, Tstar, alpha_lamb, beta){
-  nb.rejects <- 0
-  for(k in 1:K){
-    N <- 0
-    while(N <= 1){
-      PPi <- simulPPi(T_star, alpha_lamb, beta)
-      N <- length(PPi)
-      
-    }
-    pval = get_pval(PPi, Tstar)
-    nb.rejects = nb.rejects + (pval<=alpha)  
-  }
-  return(nb.rejects/K)
-}
-```
-
-
-
-```{r}
-alpha <- 0.05
-Tstar <- 3
-alpha_lamb <- 2
-beta <- 1
-test_size <- get_size(K = 1000, alpha, test1, simulPPi, Tstar, alpha_lamb, beta)
-cat("\nSize of the test : ", test_size)
-```
-
 
