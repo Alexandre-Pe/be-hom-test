@@ -58,38 +58,82 @@ Then $(T_1, ..., T_N) = (S_{(1)}, ..., S_{(N)})$.
 We have $\Lambda = (T^\star / \theta)^\beta$.
 
 ```{r}
-lambda_weibull <- function(t, beta, theta){
-  return((beta/theta)*(t/theta)**(beta-1))
-}
-
-lambda_int <- function(Tstar, beta, theta){
-  return((Tstar / theta)**beta)
-}
-
-density_S <- function(s, lambda_fct, lambda_int, Tmax, beta, theta){
-  if (s <= Tmax) {
-    p <- lambda_fct(s, beta, theta)/lambda_int(Tmax, beta, theta)
-  } else {
-    p <- 0
+lambda_weibull <- function(beta, theta, Tstar) {
+  lambda <- function(t) {
+    return((beta/theta)*(t/theta)**(beta-1))
   }
-  return(p)
+  LAMBDA <- function(t) {
+    return((t / theta)**beta)
+  }
+  quantile_function <- function(p) {
+    return(Tstar * p**(1/beta))
+  }
+  return(c(lambda, LAMBDA, quantile_function))
 }
+```
 
-quantile_function <- function(p, Tstar, beta){
-  return(Tstar * p**(1/beta))
-}
+```{r}
+weib <- lambda_weibull(beta = 3, theta = 0.5, Tstar = 1)
+lambda <- weib[[1]]
+LAMBDA <- weib[[2]]
+quantile_function <- weib[[3]]
 
 
-simulHPP <- function(Tstar, beta, theta){
+simulPP <- function(LAMBDA, quantile_function, Tmax){
   # simulate the number of event under a Poisson distribution
-  N <- rpois(1, lambda_int(Tstar, beta, theta))
+  N <- rpois(1, LAMBDA(Tmax))
   # simulate a uniform sample
   U <- runif(N,0,1)
   # apply the quantile function (inverse of the cumulative distribution function)
-  S <- quantile_function(U, Tstar, beta)
+  S <- quantile_function(U)
   # sort the sample
   return(sort(S)[1:N])
 }
+
+PP1 <- simulPP(LAMBDA, quantile_function, Tmax = 1)
+
+plot(c(0,PPi1),seq(0,length(PPi1)),type="s",xlab="time t",ylab="number of events by time t")
+points(PPi1, rep(0,length(PPi1)),type="p")
+lines(PPi1, seq(1,length(PPi1)),type="h",lty=2)
+```
+
+
+```{r}
+# lambda_weibull <- function(t, beta, theta){
+#   return((beta/theta)*(t/theta)**(beta-1))
+# }
+# 
+# lambda_int <- function(Tstar, beta, theta){
+#   return((Tstar / theta)**beta)
+# }
+# 
+# density_S <- function(s, lambda_fct, lambda_int, Tmax, beta, theta){
+#   if (s <= Tmax) {
+#     p <- lambda_fct(s, beta, theta)/lambda_int(Tmax, beta, theta)
+#   } else {
+#     p <- 0
+#   }
+#   return(p)
+# }
+
+# quantile_function <- function(p, Tstar, beta){
+#   return(Tstar * p**(1/beta))
+# }
+```
+
+
+```{r}
+
+# simulHPP <- function(Tstar, lambda_int, quantile,){
+#   # simulate the number of event under a Poisson distribution
+#   N <- rpois(1, lambda_int(Tstar, beta, theta, param3))
+#   # simulate a uniform sample
+#   U <- runif(N,0,1)
+#   # apply the quantile function (inverse of the cumulative distribution function)
+#   S <- quantile_function(U, Tstar, beta)
+#   # sort the sample
+#   return(sort(S)[1:N])
+# }
 ```
 
 Let's take $\theta = 1$.
@@ -106,7 +150,7 @@ plot(seq(0,Tstar,length.out = 10), lambda_weibull(seq(0,Tstar,length.out = 10), 
 
 
 ```{r}
-theta <- 0.4
+theta <- 0.3
 Tstar <- 1
 
 
@@ -119,6 +163,7 @@ lines(PPi1, seq(1,length(PPi1)),type="h",lty=2)
 
 
 beta <- 1 # (constant)
+theta <- 0.1
 N <- 0
 while (N == 0) {
   PPi2 <- simulHPP(Tstar, beta, theta)
@@ -252,9 +297,40 @@ theta <- 1
 Tstar <- 2
 test_power <- get_size(K = 1000, alpha, get_pval, simulHPP, Tstar, beta, theta)
 cat("\nPuissance of the test : ", test_power)
-
-
 ```
 
 
+# Real data
+
+```{r}
+library(evir)
+data(danish)
+test <- attributes(danish)$times
+length(test)
+danish <- difftime(test, min(test), units = "days")
+
+# round(test, units = "days")
+
+PPi_danish <- as.numeric(danish)
+Tstar <- max(PPi_danish)
+
+
+plot(c(0,PPi_danish),seq(0,length(PPi_danish)),type="s",xlab="time t",ylab="number of events by time t")
+points(PPi_danish, rep(0,length(PPi_danish)),type="p")
+lines(PPi_danish, seq(1,length(PPi_danish)),type="h",lty=2)
+```
+
+
+```{r}
+pval <- get_pval(PPi_danish, Tstar)
+cat("P-value : ", pval, "\n")
+
+# accept
+if (pval < alpha) {
+  cat("Reject H0 : lambda is inscreasing\n")
+} else {
+  cat("Accept H0 : lambda is constant\n")
+}
+
+```
 
