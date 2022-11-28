@@ -95,8 +95,8 @@ with an affine intensity function.
 
 
 ```{r, eval=TRUE}
-# lambda increasing by level 
-lambda_palier <- function(tau=0.5, a=1, b=2) {
+# lambda increasing by level, return lambda, LAMBDA, quantile_function
+lambda_palier <- function(Tstar=10, tau=0.5, a=1, b=2) {
   # a function returning a if t <= tau and b otherwise.
   lambda <- function(t) {
     return(ifelse(t <= tau, a, b))
@@ -106,10 +106,10 @@ lambda_palier <- function(tau=0.5, a=1, b=2) {
     return(ifelse(t <= tau, a*t, a*tau+b*(t-tau)))
   }
   # return a function returning the inverse of the precedent one.
-  invert_LAMBDA <- function(k) {
-    return(ifelse(k<=tau*a, k/a, (k-a*tau)/b + tau))
+  quantile_function <- function(k) {
+    return(ifelse(k<=tau*a, LAMBDA(Tstar)*k/a, (LAMBDA(Tstar)*k-a*tau)/b + tau))
   }
-  return(lambda, LAMBDA, invert_LAMBDA)
+  return(c(lambda, LAMBDA, quantile_function))
 }
 ```
 
@@ -168,7 +168,7 @@ simulPPi_jo <- function(LAMBDA_fct, Tstar, invert_LAMBDA_fct) {
   # simulate a uniform sample
   U <- runif(N,0,1)
   # apply the invert of the lambda function to get 
-  S <- invert_LAMBDA_fct(L_Tstar*U)
+  S <- invert_LAMBDA_fct(U)
   # sort the sample
   return(sort(S)[1:N])
 }
@@ -204,8 +204,11 @@ Test with paper method for data generation
 ```{r,eval=FALSE}
 Tmax=20
 tau = 2/3
+a = 1
+b = 2
+palier = lambda_palier(Tmax, tau*Tmax, a, b)
 
-PPi1 = simulPPi_jo(LAMBDA_palier(tau*Tmax), Tmax, invert_LAMBDA_palier(tau*Tmax))
+PPi1 = simulPPi_jo(palier[[1]], Tmax, palier[[3]])
 
 # plot the counting process (with jumps = 1): 
 plot(c(0,PPi1),seq(0,length(PPi1)),type="s",xlab="time t",ylab="number of events by time t")
