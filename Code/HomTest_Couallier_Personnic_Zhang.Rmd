@@ -367,7 +367,7 @@ lambda_palier <- function(Tstar=10, tau=0.5, a=1, b=2) {
   }
   # return a function returning the inverse of the precedent one.
   quantile_function <- function(k) {
-    return(ifelse(k<=tau*a, LAMBDA(Tstar)*k/a, (LAMBDA(Tstar)*k-a*tau)/b + tau))
+    return(ifelse(LAMBDA(Tstar)*k<=tau*a, LAMBDA(Tstar)*k/a, (LAMBDA(Tstar)*k-a*tau)/b + tau))
   }
   return(c(lambda, LAMBDA, quantile_function))
 }
