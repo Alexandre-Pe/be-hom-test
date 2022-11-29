@@ -24,15 +24,14 @@ So, we reject $\mathcal{H}_0$ when $L$ have big values, i.e. the rejection zone 
 
 ```{r}
 lambda_exp <- function(alpha, beta, Tstar) {
-  lambda <- function(alpha, beta, t){
+  lambda <- function(t){
     return(alpha*exp(beta*t))
   }
-  
-  LAMBDA <- function(alpha, beta, t){
+  LAMBDA <- function(t){
     return((alpha/beta)*(exp(beta*t) - 1))
   }
   
-  quantile_function <- function(U, Tstar, beta){
+  quantile_function <- function(U){
     return((1/beta) * log(U*(exp(beta*Tstar) - 1) + 1))
   }
   
@@ -102,7 +101,7 @@ lines(PPh, seq(1,length(PPh)),type="h",lty=2)
 test1 <- function(PPh, T_star)
 {
   n <- length(PPh)
-  L_obs <- L(PPh, T_star)
+  L_obs <- sum(PPh/T_star)
   Z_obs <- (L_obs - n/2)/sqrt(n/12)
   return(1 - pnorm(Z_obs))
 }
@@ -176,6 +175,7 @@ points(PPi, rep(0,length(PPi)),type="p")
 # link the arrival times with the counts:
 lines(PPi, seq(1,length(PPi)),type="h",lty=2)
 ```
+
 ```{r}
 print(test1(PPi, T_star))
 ```
