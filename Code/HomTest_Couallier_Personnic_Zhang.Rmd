@@ -10,48 +10,59 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-# Presentation of the different test
-
 The aim of this project is to test 
 $$
-\mathcal{H}_0 : \lambda(.) \text{ constant} \quad \quad \mbox{against} \quad \quad \mathcal{H}_1^+ : \lambda(.) \text{ increasing}
+\mathcal{H}_0 : \lambda(.) \text{ constant} \quad \quad \mbox{against} \quad \quad \mathcal{H}_1 : \lambda(.) \text{ increasing}
 $$
-
 using different test and different function for $\lambda$.
 
-## Laplace test
 
-Test statistic : 
-
-$$
-L = \sum_{i=1}^n \frac{T_i}{T^*}
-$$
-where $T^*$ is a fixed units of time
-
-Reject $\mathcal{H}_0$ when : $\mathcal{R}_{\alpha} = \left\{ L \ge l \right\}$
-
-## Weibull test
-
-Test statistic :
-
-$$
-Z = 2 \sum_{i=1}^n \log \left (\frac{T^\star}{T_i} \right )
-$$
-
-Reject $\mathcal{H}_0$ when : $\mathcal{R}_{\alpha} = \{Z \leq q \}$
-
-## F-test
-
-Test statistic : 
-
-$$F=\frac{(n-d)T_d}{d(T_n-T_d)}$$
-
-
-# Numerical simulations
-
-## Simulation with homogeneous Poisson processses
+# Implementation of general function useful for all the test
 
 ```{r}
+# Simulation of a homogeneous Poisson process
+simulPPh <- function(lambda, Tstar)
+{
+  Y <- rpois(1, lambda*Tstar)
+  U <- runif(Y, min = 0, max = Tstar)
+  return(sort(U))
+}
+```
+
+```{r}
+# Simulation of an inhomogeneous Poisson process
+simulPPi <- function(LAMBDA, quantile_function, Tstar){
+  # simulate the number of event under a Poisson distribution
+  N <- rpois(1, LAMBDA(Tstar))
+  # simulate a uniform sample
+  U <- runif(N,0,1)
+  # apply the quantile function (inverse of the cumulative distribution function)
+  S <- quantile_function(U)
+  # sort the sample
+  return(sort(S)[1:N])
+}
+```
+
+```{r,eval=TRUE}
+simulPPi_thining <- function(lambda,Tstar) {
+  # Process to simulate an inhomogeneous Poisson process
+  # with a given lambda function and Tstar using thinning process.
+  M = 1.2 * lambda(Tstar)
+  Ti <- simulPPh(M, Tstar)
+  n <- length(Ti)
+  U <- runif(n, min = 0, max = M)
+  ti <- c()
+  for (i in 1:n){
+    if (U[i] < lambda(Ti[i])) {
+      ti <- c(ti, Ti[i])
+    }
+  }
+  return(sort(ti))
+}
+```
+
+```{r}
+# Plot a Poisson process
 plot_PP <-function(PP){
   # plot the counting process (with jumps = 1): 
   plot(c(0,PP),seq(0,length(PP)),type="s",xlab="time t",ylab="number of events by time t")
@@ -63,15 +74,47 @@ plot_PP <-function(PP){
 ```
 
 ```{r}
-simulPPh <- function(lambda, Tstar)
-{
-  Y <- rpois(1, lambda*Tstar)
-  U <- runif(Y, min = 0, max = Tstar)
-  return(sort(U))
+# Decide if we reject H0 or not 
+decision <- function(pval, alpha) {
+  if (pval < alpha) {
+    cat("Reject H0 : lambda is inscreasing\n")
+  } else {
+    cat("Accept H0 : lambda is constant\n")
+  }
 }
 ```
 
-### Laplace test
+
+# Laplace test 
+
+The test statistic is defined by : 
+
+$$
+L = \sum_{i=1}^n \frac{T_i}{T^*}
+$$
+where $T^*$ is a fixed units of time
+
+This test can be used for testing 
+$$
+\mathcal{H}_0 : \beta = 0 \quad \quad \mbox{against} \quad \quad \mathcal{H}_1 :  \beta > 0 \quad \quad \text{with} \quad \lambda(t) = \alpha e^{\beta t}
+$$
+```{r}
+lambda_exp <- function(t, alpha, beta) {
+    return(alpha*exp(beta*t))
+  }
+```
+
+We reject $\mathcal{H}_0$ when $\mathcal{R}_{\alpha} = \left\{ L \ge l \right\}$. 
+
+```{r}
+Tstar <- 5
+
+plot(seq(0,Tstar,length.out = 10), lambda_exp(seq(0,Tstar,length.out = 10), alpha = 1, beta = 0), main = "beta = 0 : lambda constant")
+
+plot(seq(0,Tstar,length.out = 10), lambda_exp(seq(0,Tstar,length.out = 10), alpha = 1, beta = 1), main = "beta > 0 : lambda increasing")
+```
+
+Let's simulate homogeneous and inhomogeneous Poisson processes in order to validate the test on simulated data. 
 
 ```{r}
 # In the homogeneous case, beta = 0, so lambda = alpha
@@ -81,7 +124,10 @@ lambda <- alpha
 PPh1 <- simulPPh(lambda, Tstar)
 plot_PP(PPh1)
 ```
-Test : TO EXPLAIN
+Let's compute the p-value. 
+$$
+\hat\alpha_n \approx 1 - \Phi(Z^{obs}) \quad \text{where } \Phi \text{ cdf of a } \mathcal{N}(0,1)
+$$
 
 ```{r}
 get_pvalL <- function(PP, Tstar)
@@ -93,14 +139,6 @@ get_pvalL <- function(PP, Tstar)
   pval <- 1 - pnorm(Z_obs)
   return(pval)
 }
-
-decision <- function(pval, alpha) {
-  if (pval < alpha) {
-    cat("Reject H0 : lambda is inscreasing\n")
-  } else {
-    cat("Accept H0 : lambda is constant\n")
-  }
-}
 ```
 
 ```{r}
@@ -109,33 +147,76 @@ pval <- get_pvalL(PPh1, Tstar)
 cat("P-value : ", pval, "\n")
 decision(pval, alpha)
 ```
-
+$$
+\Lambda(t) = \frac{\alpha}{\beta} \left( e^{\beta t} - 1 \right)
+$$
 
 ```{r}
-get_size <- function(K, alpha, get_pval, simulPP, lamdba, Tstar){
-  nb.rejects <- 0
-  for(k in 1:K){
-    N <- 0
-    while(N <= 1){
-      PP <- simulPP(lambda, Tstar)
-      N <- length(PP)
-    }
-    pval <- get_pval(PP, Tstar)
-    nb.rejects = nb.rejects + (pval<=alpha)  
+lambda_exp <- function(alpha, beta, Tstar) {
+  lambda <- function(t) {
+    return(alpha*exp(beta*t))
   }
-  return(nb.rejects/K)
+  LAMBDA <- function(t) {
+    return((alpha/beta)*(exp(beta*t) - 1))
+  }
+  
+  quantile_function <- function(p) {
+    return((1/beta) * log(p*(exp(beta*Tstar) - 1) + 1))
+  }
+  
+  return(c(lambda, LAMBDA, quantile_function))
 }
 ```
 
 ```{r}
+Tstar <- 3
+alpha <- 1 
+beta <- 1
+expo <- lambda_exp(alpha, beta, Tstar)
+lambda <- expo[[1]]
+LAMBDA <- expo[[2]]
+quantile_function <- expo[[3]]
+PPi1 <- simulPPi(LAMBDA, quantile_function, Tstar)
+plot_PP(PPi1)
+```
+ 
+```{r}
 alpha <- 0.05
-Tstar <- 5
-lambda <- 2
-test_size <- get_size(K = 2000, alpha, get_pvalL, simulPPh, lambda, Tstar)
-cat("\nSize of the test : ", test_size)
+pval <- get_pvalL(PPi1, Tstar)
+cat("P-value : ", pval, "\n")
+decision(pval, alpha)
 ```
 
-### Weibull test
+
+
+# Weibull test 
+
+Test statistic :
+
+$$
+Z = 2 \sum_{i=1}^n \log \left (\frac{T^\star}{T_i} \right )
+$$
+
+This test can be used for testing 
+$$
+\mathcal{H}_0 : \beta=1 \quad \quad \mbox{against} \quad \quad \mathcal{H}_1 : \beta > 1 \quad \quad \text{with} \quad \lambda(t) = \left( \frac{\beta}{\theta}\right) \left(\frac{t}{\theta} \right)^{\beta-1}
+$$
+
+```{r}
+lambda_weib <- function(t, beta, theta) {
+  return((beta/theta)*(t/theta)**(beta-1))
+}
+```
+
+We reject $\mathcal{H}_0$ when $\mathcal{R}_{\alpha} = \{Z \leq q \}$. 
+
+```{r}
+Tstar <- 1
+
+plot(seq(0,Tstar,length.out = 10), lambda_weib(seq(0,Tstar,length.out = 10), beta = 1, theta = 1), main = "beta = 1 : lambda constant")
+
+plot(seq(0,Tstar,length.out = 10), lambda_weib(seq(0,Tstar,length.out = 10), beta = 5, theta = 1), main = "beta > 1 : lambda increasing")
+```
 
 ```{r}
 # In the homogeneous case, beta = 1, so lambda = 1/theta
@@ -179,132 +260,6 @@ decision(pval, alpha)
 ```
 
 ```{r}
-alpha <- 0.05
-Tstar <- 5
-theta <- 0.1
-lambda <- 1/theta
-test_size <- get_size(K = 2000, alpha, get_pvalZ, simulPPh, lambda, Tstar)
-cat("\nSize of the test : ", test_size)
-```
-
-
-
-### F-test
-
-```{r}
-lambda <- 2
-Tstar <- 20
-PPh3 <- simulPPh(lambda, Tstar)
-plot_PP(PPh3)
-```
-
-```{r}
-get_pvalF <- function(PP, Tstar = 1){ # The parameter Tstar here is useless, we add it so that we can use the generic function get_size defined before 
-  n = length(PP)
-  d = floor(n/2)
-  F = (n-d)*PP[d]/(d*(PP[n] - PP[d]))
-  pval = 1. - pf(F, 2*d, 2*(n-d))
-  return(pval)
-}
-```
-
-```{r}
-alpha <- 0.05
-pval <- get_pvalF(PPh3)
-cat("P-value : ", pval, "\n")
-decision(pval, alpha)
-```
-
-```{r}
-alpha <- 0.05
-Tstar <- 20
-lambda <- 2
-test_size <- get_size(K = 2000, alpha, get_pvalF, simulPPh, lambda, Tstar)
-cat("\nSize of the test : ", test_size)
-```
-
-
-## Simulation with inhomogeneous Poisson processses
-
-```{r}
-simulPPi <- function(LAMBDA, quantile_function, Tstar){
-  # simulate the number of event under a Poisson distribution
-  N <- rpois(1, LAMBDA(Tstar))
-  # simulate a uniform sample
-  U <- runif(N,0,1)
-  # apply the quantile function (inverse of the cumulative distribution function)
-  S <- quantile_function(U)
-  # sort the sample
-  return(sort(S)[1:N])
-}
-```
-
-### Laplace test
-
-```{r}
-lambda_exp <- function(alpha, beta, Tstar) {
-  lambda <- function(t) {
-    return(alpha*exp(beta*t))
-  }
-  LAMBDA <- function(t) {
-    return((alpha/beta)*(exp(beta*t) - 1))
-  }
-  
-  quantile_function <- function(p) {
-    return((1/beta) * log(p*(exp(beta*Tstar) - 1) + 1))
-  }
-  
-  return(c(lambda, LAMBDA, quantile_function))
-}
-```
-
-```{r}
-Tstar <- 3
-alpha <- 1 
-beta <- 1
-expo <- lambda_exp(alpha, beta, Tstar)
-lambda <- expo[[1]]
-LAMBDA <- expo[[2]]
-quantile_function <- expo[[3]]
-PPi1 <- simulPPi(LAMBDA, quantile_function, Tstar)
-plot_PP(PPi1)
-```
- 
-```{r}
-alpha <- 0.05
-pval <- get_pvalL(PPi1, Tstar)
-cat("P-value : ", pval, "\n")
-decision(pval, alpha)
-```
- Power of the test : 
- 
-```{r}
-get_power <- function(K, alpha, get_pval, simulPP, LAMBDA, quantile_function, Tstar){
-  nb.rejects <- 0
-  for(k in 1:K){
-    N <- 0
-    while(N <= 1){
-      PP <- simulPP(LAMBDA, quantile_function, Tstar)
-      N <- length(PP)
-    }
-    pval <- get_pval(PP, Tstar)
-    nb.rejects = nb.rejects + (pval<=alpha)  
-  }
-  return(nb.rejects/K)
-}
-```
- 
-```{r}
-alpha <- 0.05
-Tstar <- 3
-test_power <- get_power(K = 2000, alpha, get_pvalL, simulPPi, LAMBDA, quantile_function, Tstar)
-cat("\nPower of the test : ", test_power)
-``` 
- 
-
-### Weibull test 
-
-```{r}
 lambda_weibull <- function(beta, theta, Tstar) {
   lambda <- function(t) {
     return((beta/theta)*(t/theta)**(beta-1))
@@ -338,21 +293,36 @@ cat("P-value : ", pval, "\n")
 decision(pval, alpha)
 ```
 
+
+# F-Test 
+
+Test statistic : 
+
+$$F=\frac{(n-d)T_d}{d(T_n-T_d)}$$
+
+```{r}
+lambda <- 2
+Tstar <- 20
+PPh3 <- simulPPh(lambda, Tstar)
+plot_PP(PPh3)
+```
+
+```{r}
+get_pvalF <- function(PP, Tstar = 1){ # The parameter Tstar here is useless, we add it so that we can use the generic function get_size defined before 
+  n = length(PP)
+  d = floor(n/2)
+  F = (n-d)*PP[d]/(d*(PP[n] - PP[d]))
+  pval = 1. - pf(F, 2*d, 2*(n-d))
+  return(pval)
+}
+```
+
 ```{r}
 alpha <- 0.05
-Tstar <- 3
-beta <- 4
-theta <- 1
-weib <- lambda_weibull(beta, theta, Tstar)
-lambda <- weib[[1]]
-LAMBDA <- weib[[2]]
-quantile_function <- weib[[3]]
-test_power <- get_power(K = 2000, alpha, get_pvalZ, simulPPi, LAMBDA, quantile_function, Tstar)
-cat("\nPower of the test : ", test_power)
-``` 
-
-
-### F-test
+pval <- get_pvalF(PPh3)
+cat("P-value : ", pval, "\n")
+decision(pval, alpha)
+```
 
 ```{r, eval=TRUE}
 # lambda increasing by level, return lambda, LAMBDA, quantile_function
@@ -395,7 +365,6 @@ palier <- lambda_palier(Tstar, tau*Tstar, a, b)
 lambda <- palier[[1]]
 LAMBDA <- palier[[2]]
 quantile_function <- palier[[3]]
-# PPi3 <- simulPPi(palier[[1]], Tmax, palier[[3]])
 PPi3 <- simulPPi(LAMBDA, quantile_function, Tstar)
 plot_PP(PPi3)
 ```
@@ -407,9 +376,142 @@ cat("P-value : ", pval, "\n")
 decision(pval, alpha)
 ```
 
+With thining method : 
+
+```{r}
+Tstar <-20
+origin <- 1
+coef <- 1/10
+
+PPi4 <- simulPPi_thining(lambda_affine(origin, coef), Tstar)
+plot_PP(PPi4)
+```
+```{r}
+alpha <- 0.05
+pval <- get_pvalF(PPi4, Tstar)
+cat("P-value : ", pval, "\n")
+decision(pval, alpha)
+```
+
+
+# Size of the tests
+
+```{r}
+get_size <- function(K, alpha, get_pval, simulPPh, lamdba, Tstar){
+  nb.rejects <- 0
+  for(k in 1:K){
+    N <- 0
+    while(N <= 1){
+      PP <- simulPPh(lambda, Tstar)
+      N <- length(PP)
+    }
+    pval <- get_pval(PP, Tstar)
+    nb.rejects = nb.rejects + (pval<=alpha)  
+  }
+  return(nb.rejects/K)
+}
+```
+
+
+```{r}
+alpha <- 0.05
+Tstar <- 5
+lambda <- 2
+test_size <- get_size(K = 2000, alpha, get_pvalL, simulPPh, lambda, Tstar)
+cat("\nSize of the test : ", test_size)
+```
+
+```{r}
+alpha <- 0.05
+Tstar <- 5
+theta <- 0.1
+lambda <- 1/theta
+test_size <- get_size(K = 2000, alpha, get_pvalZ, simulPPh, lambda, Tstar)
+cat("\nSize of the test : ", test_size)
+```
+
+```{r}
+alpha <- 0.05
+Tstar <- 20
+lambda <- 2
+test_size <- get_size(K = 2000, alpha, get_pvalF, simulPPh, lambda, Tstar)
+cat("\nSize of the test : ", test_size)
+```
+
+
+# Comparison of the power of the tests 
+
+```{r}
+get_power <- function(K, alpha, get_pval, simulPP, LAMBDA, quantile_function, Tstar){
+  nb.rejects <- 0
+  for(k in 1:K){
+    N <- 0
+    while(N <= 1){
+      PP <- simulPP(LAMBDA, quantile_function, Tstar)
+      N <- length(PP)
+    }
+    pval <- get_pval(PP, Tstar)
+    nb.rejects = nb.rejects + (pval<=alpha)  
+  }
+  return(nb.rejects/K)
+}
+```
+
+ 
+```{r}
+alpha <- 0.05
+Tstar <- 3
+test_power <- get_power(K = 2000, alpha, get_pvalL, simulPPi, LAMBDA, quantile_function, Tstar)
+cat("\nPower of the test : ", test_power)
+``` 
+ 
+
+```{r}
+alpha <- 0.05
+Tstar <- 3
+beta <- 4
+theta <- 1
+weib <- lambda_weibull(beta, theta, Tstar)
+lambda <- weib[[1]]
+LAMBDA <- weib[[2]]
+quantile_function <- weib[[3]]
+test_power <- get_power(K = 2000, alpha, get_pvalZ, simulPPi, LAMBDA, quantile_function, Tstar)
+cat("\nPower of the test : ", test_power)
+``` 
+
 ```{r}
 alpha <- 0.05
 test_size <- get_power(K = 2000, alpha, get_pvalF, simulPPi, LAMBDA, quantile_function, Tstar)
 cat("\nPower of the test : ", test_size)
 ``` 
 
+# Real data
+
+```{r}
+library(evir)
+data(danish)
+test <- attributes(danish)$times
+length(test)
+danish <- difftime(test, min(test), units = "days")
+
+# round(test, units = "days")
+
+PPi_danish <- as.numeric(danish)
+Tstar <- max(PPi_danish)
+
+plot_PP(PPi_danish)
+```
+
+
+```{r}
+# A modifier ! Quel test utiliser ? 
+# pval <- get_pval(PPi_danish, Tstar)
+# cat("P-value : ", pval, "\n")
+# 
+# # accept
+# if (pval < alpha) {
+#   cat("Reject H0 : lambda is inscreasing\n")
+# } else {
+#   cat("Accept H0 : lambda is constant\n")
+# }
+```

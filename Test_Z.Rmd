@@ -300,37 +300,3 @@ cat("\nPuissance of the test : ", test_power)
 ```
 
 
-# Real data
-
-```{r}
-library(evir)
-data(danish)
-test <- attributes(danish)$times
-length(test)
-danish <- difftime(test, min(test), units = "days")
-
-# round(test, units = "days")
-
-PPi_danish <- as.numeric(danish)
-Tstar <- max(PPi_danish)
-
-
-plot(c(0,PPi_danish),seq(0,length(PPi_danish)),type="s",xlab="time t",ylab="number of events by time t")
-points(PPi_danish, rep(0,length(PPi_danish)),type="p")
-lines(PPi_danish, seq(1,length(PPi_danish)),type="h",lty=2)
-```
-
-
-```{r}
-pval <- get_pval(PPi_danish, Tstar)
-cat("P-value : ", pval, "\n")
-
-# accept
-if (pval < alpha) {
-  cat("Reject H0 : lambda is inscreasing\n")
-} else {
-  cat("Accept H0 : lambda is constant\n")
-}
-
-```
-
