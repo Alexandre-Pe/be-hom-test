@@ -15,7 +15,7 @@ First, let's define the test statistic.
 
 Test statistic : $L = \sum_{i=1}^n \frac{T_i}{T^*}$ where $T*$ is a fixed units of time
 
-The interarrival times $W_i$ have an exponential distribution with parameter $\lambda$ and $\mathbb{E}[\mathcal{E(\lambda)}] = \frac{1}{\lambda}$. Thus if $\lambda$ is constant, then the interarrival times $W_i$ are constant in average, and if $\lambda$ is increasing, the interarrival times are smaller and the $T_i$ are bigger. Therefore, if $\lambda$ is increasing, $\frac{T_i}{T^*}$ is greater than if $\lambda$ is constant. 
+The interarrival times $W_i$ have an exponential distribution with parameter $\lambda$ and $\mathbb{E}[\mathcal{E(\lambda)}] = \frac{1}{\lambda}$. Thus, if $\lambda$ is constant,  the interarrival times $W_i$ are constant in average, and if $\lambda$ is increasing, the interarrival times are smaller and the $T_i$ are bigger. Therefore, if $\lambda$ is increasing, $\frac{T_i}{T^*}$ is greater than if $\lambda$ is constant. 
 So, we reject $\mathcal{H}_0$ when $L$ have big values, i.e. the rejection zone is $\mathcal{R}_{\alpha} = \left\{ L \ge l \right\}$
 
 
