@@ -343,19 +343,6 @@ lambda_palier <- function(Tstar=10, tau=0.5, a=1, b=2) {
 }
 ```
 
-```{r,eval=TRUE}
-# return lambda affine function of t with origin and coefficient
-lambda_affine <- function(origin=0, coef=1) {
-  if(coef == 0) {
-    stop("coef must not be 0.")
-  }
-  temp_fun <- function(t) {
-    return(origin+t*coef)
-  }
-  return(temp_fun)
-}
-```
-
 ```{r}
 Tstar <- 20
 tau <- 2/3
@@ -379,11 +366,7 @@ decision(pval, alpha)
 With thining method : 
 
 ```{r}
-Tstar <-20
-origin <- 1
-coef <- 1/10
-
-PPi4 <- simulPPi_thining(lambda_affine(origin, coef), Tstar)
+PPi4 <- simulPPi_thining(lambda, Tstar)
 plot_PP(PPi4)
 ```
 ```{r}
@@ -393,6 +376,18 @@ cat("P-value : ", pval, "\n")
 decision(pval, alpha)
 ```
 
+# Kolmogrov Smirnov
+
+```{r, eval=TRUE}
+library(KScorrect)
+get_pvalKS <- function(PP, Tstar = 1) {
+  N <- length(PP)
+  W <- PP[2:N] - PP[1:N-1]
+  D <- LcKS(W, "pexp", nreps = 1999)
+  pval <- D$p.value
+  return(pval)
+}
+```
 
 # Size of the tests
 
@@ -457,14 +452,14 @@ get_power <- function(K, alpha, get_pval, simulPP, LAMBDA, quantile_function, Ts
 }
 ```
 
- 
+## Some examples of power estimation
+
 ```{r}
 alpha <- 0.05
 Tstar <- 3
 test_power <- get_power(K = 2000, alpha, get_pvalL, simulPPi, LAMBDA, quantile_function, Tstar)
 cat("\nPower of the test : ", test_power)
 ``` 
- 
 
 ```{r}
 alpha <- 0.05
@@ -485,6 +480,148 @@ test_size <- get_power(K = 2000, alpha, get_pvalF, simulPPi, LAMBDA, quantile_fu
 cat("\nPower of the test : ", test_size)
 ``` 
 
+## Comparative study of test
+
+```{r, eval=TRUE}
+# lambda increasing by level, return lambda, LAMBDA, quantile_function
+lambda_ln <- function(Tstar=10, beta=1) {
+  # a function returning a if t <= tau and b otherwise.
+  lambda <- function(t) {
+    return(beta*log(1+t))
+  }
+  # return a function returning the primitive of the precedent one.
+  LAMBDA <- function(t) {
+    return(beta*((1+t)*log(1+t)-t))
+  }
+  # quantile function not computed
+  return(c(lambda, LAMBDA))
+}
+```
+
+```{r, eval=TRUE}
+# Listes des paramètres des intensités
+T_star = c(2, 5, 10)
+
+K = 200
+```
+
+```{r, eval=TRUE}
+get_power_all_test <- function(K, alpha, simulPP, LAMBDA, quantile_function, Tstar) {
+  nb.rejects.Z <- 0
+  nb.rejects.L <- 0
+  nb.rejects.F <- 0
+  nb.rejects.KS <- 0
+  for(k in 1:K){
+    # print(k)
+    N <- 0
+    while(N <= 1){
+      PP <- simulPPi(LAMBDA, quantile_function, Tstar)
+      N <- length(PP)
+    }
+    pval.Z <- get_pvalZ(PP, Tstar)
+    pval.L <- get_pvalL(PP, Tstar)
+    pval.F <- get_pvalF(PP, Tstar)
+    pval.KS <- get_pvalKS(PP, Tstar)
+    nb.rejects.Z = nb.rejects.Z + (pval.Z<=alpha)
+    nb.rejects.L = nb.rejects.L + (pval.L<=alpha)  
+    nb.rejects.F = nb.rejects.F + (pval.F<=alpha)  
+    nb.rejects.KS = nb.rejects.KS + (pval.KS<=alpha)  
+  }
+  return(c(nb.rejects.Z/K, nb.rejects.L/K, nb.rejects.F/K, nb.rejects.KS/K))
+}
+```
+
+```{r, eval=TRUE}
+# Weibull intensity
+beta_weib = c(2, 2, 2)
+theta_weib = c(0.6, 0.7, 0.7)
+
+wei_Z  = c()
+wei_L  = c()
+wei_F  = c()
+wei_KS = c()
+for(i in 1:3) {
+  T = T_star[[i]]
+  weib <- lambda_weibull(beta_weib[[i]], theta_weib[[i]], T)
+  lambda <- weib[[1]]
+  LAMBDA <- weib[[2]]
+  quantile_function <- weib[[3]]
+  res = get_power_all_test(K, alpha, simulPPi, LAMBDA, quantile_function, T)
+  wei_Z = c(wei_Z, res[[1]])
+  wei_L = c(wei_L, res[[2]])
+  wei_F = c(wei_F, res[[3]])
+  wei_KS = c(wei_KS, res[[4]])
+}
+```
+
+```{r, eval=TRUE}
+# Exponential intensity
+alpha_exp = c(2, 0.35, 0.009)
+beta_exp = c(1, 1, 1)
+
+exp_Z  = c()
+exp_L  = c()
+exp_F  = c()
+exp_KS = c()
+for(i in 1:3) {
+  T = T_star[[i]]
+  exp <- lambda_exp(alpha_exp[[i]], beta_exp[[i]], T)
+  lambda <- exp[[1]]
+  LAMBDA <- exp[[2]]
+  quantile_function <- exp[[3]]
+  res = get_power_all_test(K, alpha, simulPPi, LAMBDA, quantile_function, T)
+  exp_Z = c(exp_Z, res[[1]])
+  exp_L = c(exp_L, res[[2]])
+  exp_F = c(exp_F, res[[3]])
+  exp_KS = c(exp_KS, res[[4]])
+}
+```
+
+```{r, eval=TRUE}
+# Step function intensity
+tau = 0.5
+a_pal = c(3, 5, 10)
+b_pal = c(6, 10, 20)
+
+pal_Z  = c()
+pal_L  = c()
+pal_F  = c()
+pal_KS = c()
+for(i in 1:3) {
+  T = T_star[[i]]
+  pal <- lambda_palier(T, tau, a_pal[[i]], b_pal[[i]])
+  lambda <- pal[[1]]
+  LAMBDA <- pal[[2]]
+  quantile_function <- pal[[3]]
+  res = get_power_all_test(K, alpha, simulPPi, LAMBDA, quantile_function, T)
+  pal_Z = c(pal_Z, res[[1]])
+  pal_L = c(pal_L, res[[2]])
+  pal_F = c(pal_F, res[[3]])
+  pal_KS = c(pal_KS, res[[4]])
+}
+```
+
+```{r, eval=TRUE}
+# Logarithmic intensity
+beta_ln = c(7.7, 8.7, 12.2)
+
+ln_Z  = c()
+ln_L  = c()
+ln_F  = c()
+ln_KS = c()
+for(i in 1:3) {
+  T = T_star[[i]]
+  ln <- lambda_ln(T, beta_ln[[i]])
+  lambda <- ln[[1]]
+  LAMBDA <- ln[[2]]
+  quantile_function <- ln[[3]]
+  res = get_power_all_test(K, alpha, simulPPi, LAMBDA, quantile_function, T)
+  ln_Z = c(ln_Z, res[[1]])
+  ln_L = c(ln_L, res[[2]])
+  ln_F = c(ln_F, res[[3]])
+  ln_KS = c(ln_KS, res[[4]])
+}
+```
 # Real data
 
 ```{r}
