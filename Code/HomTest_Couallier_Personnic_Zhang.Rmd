@@ -44,7 +44,7 @@ simulPPi <- function(LAMBDA, quantile_function, Tstar){
 ```
 
 ```{r,eval=TRUE}
-simulPPi_thining <- function(lambda,Tstar) {
+simulPPi_thining <- function(lambda, placeholder, Tstar) {
   # Process to simulate an inhomogeneous Poisson process
   # with a given lambda function and Tstar using thinning process.
   M = 1.2 * lambda(Tstar)
@@ -366,7 +366,7 @@ decision(pval, alpha)
 With thining method : 
 
 ```{r}
-PPi4 <- simulPPi_thining(lambda, Tstar)
+PPi4 <- simulPPi_thining(lambda, NULL, Tstar)
 plot_PP(PPi4)
 ```
 ```{r}
@@ -502,7 +502,7 @@ lambda_ln <- function(Tstar=10, beta=1) {
 # Listes des paramètres des intensités
 T_star = c(2, 5, 10)
 
-K = 200
+K = 2000
 ```
 
 ```{r, eval=TRUE}
@@ -515,7 +515,7 @@ get_power_all_test <- function(K, alpha, simulPP, LAMBDA, quantile_function, Tst
     # print(k)
     N <- 0
     while(N <= 1){
-      PP <- simulPPi(LAMBDA, quantile_function, Tstar)
+      PP <- simulPP(LAMBDA, quantile_function, Tstar)
       N <- length(PP)
     }
     pval.Z <- get_pvalZ(PP, Tstar)
@@ -614,8 +614,7 @@ for(i in 1:3) {
   ln <- lambda_ln(T, beta_ln[[i]])
   lambda <- ln[[1]]
   LAMBDA <- ln[[2]]
-  quantile_function <- ln[[3]]
-  res = get_power_all_test(K, alpha, simulPPi, LAMBDA, quantile_function, T)
+  res = get_power_all_test(K, alpha, simulPPi_thining, lambda, NULL, T)
   ln_Z = c(ln_Z, res[[1]])
   ln_L = c(ln_L, res[[2]])
   ln_F = c(ln_F, res[[3]])
