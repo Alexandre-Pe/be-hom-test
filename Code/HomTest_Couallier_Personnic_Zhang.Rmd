@@ -433,7 +433,13 @@ test_size <- get_size(K = 2000, alpha, get_pvalF, simulPPh, lambda, Tstar)
 cat("\nSize of the test : ", test_size)
 ```
 
-
+```{r}
+alpha <- 0.05
+Tstar <- 20
+lambda <- 2
+test_size <- get_size(K = 2000, alpha, get_pvalKS, simulPPh, lambda, Tstar)
+cat("\nSize of the test : ", test_size)
+```
 # Comparison of the power of the tests 
 
 ```{r}
