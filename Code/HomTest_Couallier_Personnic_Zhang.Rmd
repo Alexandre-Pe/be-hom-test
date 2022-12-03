@@ -326,7 +326,7 @@ decision(pval, alpha)
 
 ```{r, eval=TRUE}
 # lambda increasing by level, return lambda, LAMBDA, quantile_function
-lambda_palier <- function(Tstar=10, tau=0.5, a=1, b=2) {
+lambda_palier <- function(Tstar=1, tau=0.5, a=1, b=2) {
   # a function returning a if t <= tau and b otherwise.
   lambda <- function(t) {
     return(ifelse(t <= tau, a, b))
@@ -595,7 +595,7 @@ pal_F  = c()
 pal_KS = c()
 for(i in 1:3) {
   T = T_star[[i]]
-  pal <- lambda_palier(T, tau, a_pal[[i]], b_pal[[i]])
+  pal <- lambda_palier(T, tau*T, a_pal[[i]], b_pal[[i]])
   lambda <- pal[[1]]
   LAMBDA <- pal[[2]]
   quantile_function <- pal[[3]]
