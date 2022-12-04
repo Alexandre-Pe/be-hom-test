@@ -627,36 +627,6 @@ for(i in 1:3) {
   ln_KS = c(ln_KS, res[[4]])
 }
 ```
-# Real data
-
-```{r}
-library(evir)
-data(danish)
-test <- attributes(danish)$times
-length(test)
-danish <- difftime(test, min(test), units = "days")
-
-# round(test, units = "days")
-
-PPi_danish <- as.numeric(danish)
-Tstar <- max(PPi_danish)
-
-plot_PP(PPi_danish)
-```
-
-
-```{r}
-# A modifier ! Quel test utiliser ? 
-# pval <- get_pval(PPi_danish, Tstar)
-# cat("P-value : ", pval, "\n")
-# 
-# # accept
-# if (pval < alpha) {
-#   cat("Reject H0 : lambda is inscreasing\n")
-# } else {
-#   cat("Accept H0 : lambda is constant\n")
-# }
-```
 
 ```{r}
 df <- data.frame(matrix(ncol = 12, nrow = 4))
@@ -674,4 +644,60 @@ df[4,1:12] <- c(wei_KS, exp_KS, pal_KS, ln_KS)
 
 ```{r}
 df
+```
+
+# Real data
+
+```{r}
+library(evir)
+data(danish)
+test <- attributes(danish)$times
+
+# some claims are on the same date, we need to remove them...
+cat("percentage of deleted dates :", length(test[duplicated(test)])*100 / length(test))
+
+test <- test[!duplicated(test)]
+```
+
+
+```{r}
+danish <- difftime(test, min(test), units = "days")
+
+PPi_danish <- as.numeric(danish)[2:length(danish)]
+Tstar <- max(PPi_danish)
+
+plot_PP(PPi_danish)
+```
+
+```{r, eval=TRUE}
+# A modifier ! Quel test utiliser ? 
+alpha <- 0.05
+
+cat("\nWith F-Test : \n")
+pval <- get_pvalF(PPi_danish, Tstar)
+cat("P-value : ", pval, "\n")
+if (pval < alpha) {cat("Reject H0 : lambda is inscreasing\n")
+} else {cat("Accept H0 : lambda is constant\n")
+}
+
+cat("\nWith Z-Test : \n")
+pval <- get_pvalZ(PPi_danish, Tstar)
+cat("P-value : ", pval, "\n")
+if (pval < alpha) {cat("Reject H0 : lambda is inscreasing\n")
+} else {cat("Accept H0 : lambda is constant\n")
+}
+
+cat("\nWith L-Test : \n")
+pval <- get_pvalL(PPi_danish, Tstar)
+cat("P-value : ", pval, "\n")
+if (pval < alpha) {cat("Reject H0 : lambda is inscreasing\n")
+} else {cat("Accept H0 : lambda is constant\n")
+}
+
+cat("\nWith K-S-Test : \n")
+pval <- get_pvalKS(PPi_danish, Tstar)
+cat("P-value : ", pval, "\n")
+if (pval < alpha) {cat("Reject H0 : lambda is inscreasing\n")
+} else {cat("Accept H0 : lambda is constant\n")
+}
 ```
