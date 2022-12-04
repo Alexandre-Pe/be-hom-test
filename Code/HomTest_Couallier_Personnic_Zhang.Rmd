@@ -175,7 +175,7 @@ fct <- lambda(time)
 plot(time, fct, main = "Weibull", type = "l")
 
 Tstar <- 20
-tau <- 2/3
+tau <- 1/2
 a <- 1
 b <- 2
 palier <- lambda_palier(Tstar, tau*Tstar, a, b)
