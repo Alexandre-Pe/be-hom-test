@@ -84,6 +84,118 @@ decision <- function(pval, alpha) {
 }
 ```
 
+```{r}
+lambda_exp <- function(alpha, beta, Tstar) {
+  lambda <- function(t) {
+    return(alpha*exp(beta*t))
+  }
+  LAMBDA <- function(t) {
+    return((alpha/beta)*(exp(beta*t) - 1))
+  }
+  
+  quantile_function <- function(p) {
+    return((1/beta) * log(p*(exp(beta*Tstar) - 1) + 1))
+  }
+  
+  return(c(lambda, LAMBDA, quantile_function))
+}
+```
+
+
+
+```{r}
+lambda_weibull <- function(beta, theta, Tstar) {
+  lambda <- function(t) {
+    return((beta/theta)*(t/theta)**(beta-1))
+  }
+  LAMBDA <- function(t) {
+    return((t / theta)**beta)
+  }
+  quantile_function <- function(p) {
+    return(Tstar * p**(1/beta))
+  }
+  return(c(lambda, LAMBDA, quantile_function))
+}
+```
+
+```{r, eval=TRUE}
+# lambda increasing by level, return lambda, LAMBDA, quantile_function
+lambda_palier <- function(Tstar=1, tau=0.5, a=1, b=2) {
+  # a function returning a if t <= tau and b otherwise.
+  lambda <- function(t) {
+    return(ifelse(t <= tau, a, b))
+  }
+  # return a function returning the primitive of the precedent one.
+  LAMBDA <- function(t) {
+    return(ifelse(t <= tau, a*t, a*tau+b*(t-tau)))
+  }
+  # return a function returning the inverse of the precedent one.
+  quantile_function <- function(k) {
+    return(ifelse(LAMBDA(Tstar)*k<=tau*a, LAMBDA(Tstar)*k/a, (LAMBDA(Tstar)*k-a*tau)/b + tau))
+  }
+  return(c(lambda, LAMBDA, quantile_function))
+}
+```
+
+
+```{r, eval=TRUE}
+# lambda increasing by level, return lambda, LAMBDA, quantile_function
+lambda_ln <- function(Tstar=10, beta=1) {
+  # a function returning a if t <= tau and b otherwise.
+  lambda <- function(t) {
+    return(beta*log(1+t))
+  }
+  # return a function returning the primitive of the precedent one.
+  LAMBDA <- function(t) {
+    return(beta*((1+t)*log(1+t)-t))
+  }
+  # quantile function not computed
+  return(c(lambda, LAMBDA))
+}
+```
+
+
+```{r}
+Tstar <- 2
+alpha <- 1 
+beta <- 1
+expo <- lambda_exp(alpha, beta, Tstar)
+lambda <- expo[[1]]
+time <- seq(0, Tstar, length.out = 20)
+fct <- lambda(time)
+plot(time, fct, main = "Exponential", type = "l")
+
+Tstar <- 3
+beta <- 2
+theta <- 0.5
+weib <- lambda_weibull(beta, theta, Tstar)
+lambda <- weib[[1]]
+time <- seq(0, Tstar, length.out = 20)
+fct <- lambda(time)
+plot(time, fct, main = "Weibull", type = "l")
+
+Tstar <- 20
+tau <- 2/3
+a <- 1
+b <- 2
+palier <- lambda_palier(Tstar, tau*Tstar, a, b)
+lambda <- palier[[1]]
+time <- seq(0, Tstar, length.out = 20)
+fct <- lambda(time)
+plot(time, fct, main = "Step", type = "l")
+
+
+beta_ln <- 7.7
+T_star <- 2
+ln <- lambda_ln(T, beta_ln)
+lambda <- ln[[1]]
+time <- seq(0, Tstar, length.out = 20)
+fct <- lambda(time)
+plot(time, fct, main = "Logarithmic", type = "l")
+```
+
+
+
 
 # Laplace test 
 
@@ -98,21 +210,9 @@ This test can be used for testing
 $$
 \mathcal{H}_0 : \beta = 0 \quad \quad \mbox{against} \quad \quad \mathcal{H}_1 :  \beta > 0 \quad \quad \text{with} \quad \lambda(t) = \alpha e^{\beta t}
 $$
-```{r}
-lambda_exp <- function(t, alpha, beta) {
-    return(alpha*exp(beta*t))
-  }
-```
+
 
 We reject $\mathcal{H}_0$ when $\mathcal{R}_{\alpha} = \left\{ L \ge l \right\}$. 
-
-```{r}
-Tstar <- 5
-
-plot(seq(0,Tstar,length.out = 10), lambda_exp(seq(0,Tstar,length.out = 10), alpha = 1, beta = 0), main = "beta = 0 : lambda constant")
-
-plot(seq(0,Tstar,length.out = 10), lambda_exp(seq(0,Tstar,length.out = 10), alpha = 1, beta = 1), main = "beta > 0 : lambda increasing")
-```
 
 Let's simulate homogeneous and inhomogeneous Poisson processes in order to validate the test on simulated data. 
 
@@ -151,22 +251,7 @@ $$
 \Lambda(t) = \frac{\alpha}{\beta} \left( e^{\beta t} - 1 \right)
 $$
 
-```{r}
-lambda_exp <- function(alpha, beta, Tstar) {
-  lambda <- function(t) {
-    return(alpha*exp(beta*t))
-  }
-  LAMBDA <- function(t) {
-    return((alpha/beta)*(exp(beta*t) - 1))
-  }
-  
-  quantile_function <- function(p) {
-    return((1/beta) * log(p*(exp(beta*Tstar) - 1) + 1))
-  }
-  
-  return(c(lambda, LAMBDA, quantile_function))
-}
-```
+
 
 ```{r}
 Tstar <- 3
@@ -178,6 +263,7 @@ LAMBDA <- expo[[2]]
 quantile_function <- expo[[3]]
 PPi1 <- simulPPi(LAMBDA, quantile_function, Tstar)
 plot_PP(PPi1)
+
 ```
  
 ```{r}
@@ -202,21 +288,8 @@ $$
 \mathcal{H}_0 : \beta=1 \quad \quad \mbox{against} \quad \quad \mathcal{H}_1 : \beta > 1 \quad \quad \text{with} \quad \lambda(t) = \left( \frac{\beta}{\theta}\right) \left(\frac{t}{\theta} \right)^{\beta-1}
 $$
 
-```{r}
-lambda_weib <- function(t, beta, theta) {
-  return((beta/theta)*(t/theta)**(beta-1))
-}
-```
-
 We reject $\mathcal{H}_0$ when $\mathcal{R}_{\alpha} = \{Z \leq q \}$. 
 
-```{r}
-Tstar <- 1
-
-plot(seq(0,Tstar,length.out = 10), lambda_weib(seq(0,Tstar,length.out = 10), beta = 1, theta = 1), main = "beta = 1 : lambda constant")
-
-plot(seq(0,Tstar,length.out = 10), lambda_weib(seq(0,Tstar,length.out = 10), beta = 5, theta = 1), main = "beta > 1 : lambda increasing")
-```
 
 ```{r}
 # In the homogeneous case, beta = 1, so lambda = 1/theta
@@ -259,20 +332,7 @@ cat("P-value : ", pval, "\n")
 decision(pval, alpha)
 ```
 
-```{r}
-lambda_weibull <- function(beta, theta, Tstar) {
-  lambda <- function(t) {
-    return((beta/theta)*(t/theta)**(beta-1))
-  }
-  LAMBDA <- function(t) {
-    return((t / theta)**beta)
-  }
-  quantile_function <- function(p) {
-    return(Tstar * p**(1/beta))
-  }
-  return(c(lambda, LAMBDA, quantile_function))
-}
-```
+
 
 ```{r}
 Tstar <- 1
@@ -324,24 +384,7 @@ cat("P-value : ", pval, "\n")
 decision(pval, alpha)
 ```
 
-```{r, eval=TRUE}
-# lambda increasing by level, return lambda, LAMBDA, quantile_function
-lambda_palier <- function(Tstar=1, tau=0.5, a=1, b=2) {
-  # a function returning a if t <= tau and b otherwise.
-  lambda <- function(t) {
-    return(ifelse(t <= tau, a, b))
-  }
-  # return a function returning the primitive of the precedent one.
-  LAMBDA <- function(t) {
-    return(ifelse(t <= tau, a*t, a*tau+b*(t-tau)))
-  }
-  # return a function returning the inverse of the precedent one.
-  quantile_function <- function(k) {
-    return(ifelse(LAMBDA(Tstar)*k<=tau*a, LAMBDA(Tstar)*k/a, (LAMBDA(Tstar)*k-a*tau)/b + tau))
-  }
-  return(c(lambda, LAMBDA, quantile_function))
-}
-```
+
 
 ```{r}
 Tstar <- 20
@@ -488,21 +531,7 @@ cat("\nPower of the test : ", test_size)
 
 ## Comparative study of test
 
-```{r, eval=TRUE}
-# lambda increasing by level, return lambda, LAMBDA, quantile_function
-lambda_ln <- function(Tstar=10, beta=1) {
-  # a function returning a if t <= tau and b otherwise.
-  lambda <- function(t) {
-    return(beta*log(1+t))
-  }
-  # return a function returning the primitive of the precedent one.
-  LAMBDA <- function(t) {
-    return(beta*((1+t)*log(1+t)-t))
-  }
-  # quantile function not computed
-  return(c(lambda, LAMBDA))
-}
-```
+
 
 ```{r, eval=TRUE}
 # Listes des paramètres des intensités
