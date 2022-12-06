@@ -19,7 +19,7 @@ using different test and different function for $\lambda$.
 
 # Implementation of general function useful for all the test
 
-```{r}
+```{r simulPPh}
 # Simulation of a homogeneous Poisson process
 simulPPh <- function(lambda, Tstar)
 {
@@ -29,7 +29,7 @@ simulPPh <- function(lambda, Tstar)
 }
 ```
 
-```{r}
+```{r simulPPi}
 # Simulation of an inhomogeneous Poisson process
 simulPPi <- function(LAMBDA, quantile_function, Tstar){
   # simulate the number of event under a Poisson distribution
@@ -43,7 +43,7 @@ simulPPi <- function(LAMBDA, quantile_function, Tstar){
 }
 ```
 
-```{r,eval=TRUE}
+```{r simulPPi_thining,eval=TRUE}
 simulPPi_thining <- function(lambda, placeholder, Tstar) {
   # Process to simulate an inhomogeneous Poisson process
   # with a given lambda function and Tstar using thinning process.
@@ -61,7 +61,7 @@ simulPPi_thining <- function(lambda, placeholder, Tstar) {
 }
 ```
 
-```{r}
+```{r plot_PP}
 # Plot a Poisson process
 plot_PP <-function(PP){
   # plot the counting process (with jumps = 1): 
@@ -73,7 +73,7 @@ plot_PP <-function(PP){
 }
 ```
 
-```{r}
+```{r decision}
 # Decide if we reject H0 or not 
 decision <- function(pval, alpha) {
   if (pval < alpha) {
@@ -84,7 +84,7 @@ decision <- function(pval, alpha) {
 }
 ```
 
-```{r}
+```{r exp}
 lambda_exp <- function(alpha, beta, Tstar) {
   lambda <- function(t) {
     return(alpha*exp(beta*t))
@@ -103,7 +103,7 @@ lambda_exp <- function(alpha, beta, Tstar) {
 
 
 
-```{r}
+```{r weib}
 lambda_weibull <- function(beta, theta, Tstar) {
   lambda <- function(t) {
     return((beta/theta)*(t/theta)**(beta-1))
@@ -118,7 +118,7 @@ lambda_weibull <- function(beta, theta, Tstar) {
 }
 ```
 
-```{r, eval=TRUE}
+```{r palier, eval=TRUE}
 # lambda increasing by level, return lambda, LAMBDA, quantile_function
 lambda_palier <- function(Tstar=1, tau=0.5, a=1, b=2) {
   # a function returning a if t <= tau and b otherwise.
@@ -138,7 +138,7 @@ lambda_palier <- function(Tstar=1, tau=0.5, a=1, b=2) {
 ```
 
 
-```{r, eval=TRUE}
+```{r ln, eval=TRUE}
 # lambda increasing by level, return lambda, LAMBDA, quantile_function
 lambda_ln <- function(Tstar=10, beta=1) {
   # a function returning a if t <= tau and b otherwise.
@@ -155,7 +155,7 @@ lambda_ln <- function(Tstar=10, beta=1) {
 ```
 
 
-```{r}
+```{r plot_lambda}
 Tstar <- 2
 alpha <- 1 
 beta <- 1
@@ -196,7 +196,6 @@ plot(time, fct, main = "Logarithmic", type = "l")
 
 
 
-
 # Laplace test 
 
 The test statistic is defined by : 
@@ -224,12 +223,13 @@ lambda <- alpha
 PPh1 <- simulPPh(lambda, Tstar)
 plot_PP(PPh1)
 ```
+
 Let's compute the p-value. 
 $$
 \hat\alpha_n \approx 1 - \Phi(Z^{obs}) \quad \text{where } \Phi \text{ cdf of a } \mathcal{N}(0,1)
 $$
 
-```{r}
+```{r pvalL}
 get_pvalL <- function(PP, Tstar)
 {
   n <- length(PP)
@@ -247,6 +247,7 @@ pval <- get_pvalL(PPh1, Tstar)
 cat("P-value : ", pval, "\n")
 decision(pval, alpha)
 ```
+
 $$
 \Lambda(t) = \frac{\alpha}{\beta} \left( e^{\beta t} - 1 \right)
 $$
@@ -272,7 +273,6 @@ pval <- get_pvalL(PPi1, Tstar)
 cat("P-value : ", pval, "\n")
 decision(pval, alpha)
 ```
-
 
 
 # Weibull test 
@@ -315,7 +315,7 @@ pvalue = \mathbb{P}(Z \leq Z^{obs}) = \Phi_{\mathcal{X^2}}(Z^{obs}) \\
 \text{where } \Phi \text{ cdf of a } \mathcal{X}^2(2n)
 $$
 
-```{r}
+```{r pvalZ}
 get_pvalZ <- function(PP, Tstar){
   Zobs <- 2*sum(log(Tstar/PP))
   N <- length(PP)
@@ -331,7 +331,6 @@ pval <- get_pvalZ(PPh2, Tstar)
 cat("P-value : ", pval, "\n")
 decision(pval, alpha)
 ```
-
 
 
 ```{r}
@@ -367,7 +366,7 @@ PPh3 <- simulPPh(lambda, Tstar)
 plot_PP(PPh3)
 ```
 
-```{r}
+```{r pvalF}
 get_pvalF <- function(PP, Tstar = 1){ # The parameter Tstar here is useless, we add it so that we can use the generic function get_size defined before 
   n = length(PP)
   d = floor(n/2)
@@ -383,7 +382,6 @@ pval <- get_pvalF(PPh3)
 cat("P-value : ", pval, "\n")
 decision(pval, alpha)
 ```
-
 
 
 ```{r}
@@ -421,7 +419,7 @@ decision(pval, alpha)
 
 # Kolmogrov Smirnov
 
-```{r, eval=TRUE}
+```{r pvalKS, eval=TRUE}
 library(KScorrect)
 get_pvalKS <- function(PP, Tstar = 1) {
   N <- length(PP)
@@ -434,7 +432,7 @@ get_pvalKS <- function(PP, Tstar = 1) {
 
 # Size of the tests
 
-```{r}
+```{r size}
 get_size <- function(K, alpha, get_pval, simulPPh, lamdba, Tstar){
   nb.rejects <- 0
   for(k in 1:K){
@@ -483,9 +481,10 @@ lambda <- 2
 test_size <- get_size(K = 2000, alpha, get_pvalKS, simulPPh, lambda, Tstar)
 cat("\nSize of the test : ", test_size)
 ```
+
 # Comparison of the power of the tests 
 
-```{r}
+```{rpower}
 get_power <- function(K, alpha, get_pval, simulPP, LAMBDA, quantile_function, Tstar){
   nb.rejects <- 0
   for(k in 1:K){
@@ -530,7 +529,6 @@ cat("\nPower of the test : ", test_size)
 ``` 
 
 ## Comparative study of test
-
 
 
 ```{r, eval=TRUE}
